@@ -37,7 +37,7 @@ async function main() {
     sourcesContent: false,
     platform: "node",
     outfile: "dist/extension.js",
-    metafile: production,
+    metafile: !production,
     external: ["vscode"],
     logLevel: "debug",
     plugins: [

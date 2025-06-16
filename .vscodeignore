@@ -1,59 +1,17 @@
-# VSCode configuration and test files
-.vscode/**
-.vscode-test/**
-.vscode-test.mjs
+# Exclude everything
+**
 
-# Build output directories (keep dist/ for compiled extension)
-out/**
+# Include README.md, CHANGELOG.md and LICENSE
+!README.md
+!CHANGELOG.md
+!LICENSE
 
-# Dependencies
-node_modules/**
+# Include package.json
+!package.json
+!package.nls.*
 
-# Source files (TypeScript gets compiled to dist/)
-src/**
+# Include the built extension
+!dist
 
-# Package manager files
-.npmrc
-.yarnrc
-pnpm-lock.yaml
-pnpm-workspace.yaml
-
-# Git files
-.gitignore
-.gitattributes
-
-# Build and development configuration
-esbuild.js
-**/tsconfig.json
-**/eslint.config.mjs
-eslint.config.mjs
-
-# Prettier configuration
-.prettierrc
-.prettierignore
-
-# Source maps and TypeScript files
-**/*.map
-**/*.ts
-dist/meta.json
-
-# Test files
-**/.vscode-test.*
-**/*.http
-
-# Examples and demos
-examples/**
-
-# Built extension package (avoid including the .vsix in itself)
-*.vsix
-
-# Husky git hooks
-.husky/**
-
-# Documentation files
-assets/**/*.gif
-assets/**/*.svg
-assets/**/*.png
-
-# Github configs
-.github/**
+# Include icons and images
+!assets/icons/icon.png
