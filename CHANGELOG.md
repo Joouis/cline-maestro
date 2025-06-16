@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.2.2] - 2025-06-16
+## [0.2.4] - 2025-06-16
 
 ### Features
 
@@ -8,10 +8,7 @@
 - Added configuration support when creating new Roo tasks
 - Improved extension publishing and dependency management
 - Added Server-Sent Events (SSE) documentation for Roo API
-
-### Bug Fixes
-
-- Fixed incorrect usage of extensionPack in extension manifest
+- Proxy server skips start if another one is already running, otherwise find an available port if default one has been used
 
 ## [0.1.0] - 2025-06-14
 
