@@ -38,10 +38,23 @@ export async function activate(context: vscode.ExtensionContext) {
           return;
         }
 
-        await proxy.start();
-        vscode.window.showInformationMessage(
-          `Proxy server started on ${proxy.getStatus().url}, you can check all available API endpoints at ${proxy.getOpenAPIUrl()}`,
-        );
+        const result = await proxy.start();
+
+        if (result.started) {
+          vscode.window.showInformationMessage(
+            `Proxy server started on ${proxy.getStatus().url}, you can check all available API endpoints at ${proxy.getOpenAPIUrl()}`,
+          );
+        } else {
+          // Don't show error message for "another instance running" case
+          if (result.reason === "Another instance is already running") {
+            logger.info(`Server startup skipped: ${result.reason}`);
+            logger.info(`API is available at ${proxy.getStatus().url}`);
+          } else {
+            vscode.window.showInformationMessage(
+              `Server startup: ${result.reason}`,
+            );
+          }
+        }
       } catch (error) {
         logger.error("Failed to start server:", error);
         vscode.window.showErrorMessage(
@@ -74,11 +87,19 @@ export async function activate(context: vscode.ExtensionContext) {
           return;
         }
 
-        await proxy.restart();
-        const status = proxy.getStatus();
-        vscode.window.showInformationMessage(
-          `Proxy server restarted on ${status.url}`,
-        );
+        await proxy.stop();
+        const result = await proxy.start();
+
+        if (result.started) {
+          const status = proxy.getStatus();
+          vscode.window.showInformationMessage(
+            `Proxy server restarted on ${status.url}`,
+          );
+        } else {
+          vscode.window.showInformationMessage(
+            `Server restart: ${result.reason}`,
+          );
+        }
       } catch (error) {
         logger.error("Failed to restart server:", error);
         vscode.window.showErrorMessage(

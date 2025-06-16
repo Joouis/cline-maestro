@@ -2,6 +2,7 @@ import Fastify, { FastifyInstance } from "fastify";
 import swagger from "@fastify/swagger";
 import cors from "@fastify/cors";
 import { logger } from "../utils/logger";
+import { analyzePortUsage, findAvailablePort } from "../utils/portUtils";
 import { ExtensionController } from "../core/controller";
 import { registerRooRoutes } from "./routes/rooRoutes";
 import { registerClineRoutes } from "./routes/clineRoutes";
@@ -192,25 +193,96 @@ export class ProxyServer {
     );
   }
 
-  async start(): Promise<void> {
+  async start(): Promise<{ started: boolean; reason: string; port?: number }> {
     if (this.isRunning) {
       logger.warn("Server is already running");
-      return;
+      return { started: false, reason: "Server is already running" };
     }
 
-    try {
-      await this.fastify.listen({
-        port: this.port,
-        host: "127.0.0.1",
-      });
-      this.isRunning = true;
-      logger.info(`Server started on http://127.0.0.1:${this.port}`);
-      logger.info(
-        `OpenAPI documentation available at http://127.0.0.1:${this.port}/api/v1/openapi.json`,
-      );
-    } catch (error) {
-      logger.error("Failed to start server:", error);
-      throw error;
+    // Analyze the current port usage
+    const analysis = await analyzePortUsage(this.port);
+    logger.debug(`Port analysis for ${this.port}:`, analysis);
+
+    switch (analysis.action) {
+      case "use":
+        // Port is available, proceed normally
+        try {
+          await this.fastify.listen({
+            port: this.port,
+            host: "127.0.0.1",
+          });
+          this.isRunning = true;
+          logger.info(`Server started on http://127.0.0.1:${this.port}`);
+          logger.info(
+            `OpenAPI documentation available at http://127.0.0.1:${this.port}/api/v1/openapi.json`,
+          );
+          return {
+            started: true,
+            reason: "Server started successfully",
+            port: this.port,
+          };
+        } catch (error) {
+          logger.error("Failed to start server:", error);
+          throw error;
+        }
+
+      case "skip":
+        // Another instance of our server is already running, skip silently
+        logger.info(analysis.message);
+        logger.info(
+          `API is available at http://127.0.0.1:${this.port}/api/v1/openapi.json`,
+        );
+        return {
+          started: false,
+          reason: "Another instance is already running",
+          port: this.port,
+        };
+
+      case "findAlternative":
+        // Port is occupied by another application, try to find an alternative
+        logger.info(analysis.message);
+        const alternativePort = await findAvailablePort(this.port + 1, 10);
+
+        if (alternativePort) {
+          logger.info(`Found alternative port: ${alternativePort}`);
+          const originalPort = this.port;
+          this.port = alternativePort;
+
+          // Update swagger configuration with new port
+          await this.setupSwagger();
+
+          try {
+            await this.fastify.listen({
+              port: this.port,
+              host: "127.0.0.1",
+            });
+            this.isRunning = true;
+            logger.info(
+              `Server started on alternative port http://127.0.0.1:${this.port}`,
+            );
+            logger.info(
+              `OpenAPI documentation available at http://127.0.0.1:${this.port}/api/v1/openapi.json`,
+            );
+            logger.info(
+              `Note: Default port ${originalPort} was occupied by another application`,
+            );
+            return {
+              started: true,
+              reason: `Started on alternative port (${originalPort} was occupied)`,
+              port: this.port,
+            };
+          } catch (error) {
+            logger.error("Failed to start server on alternative port:", error);
+            throw error;
+          }
+        } else {
+          const errorMsg = `No available ports found (tried ${this.port}-${this.port + 10})`;
+          logger.error(errorMsg);
+          throw new Error(errorMsg);
+        }
+
+      default:
+        throw new Error(`Unknown port analysis action: ${analysis.action}`);
     }
   }
 
@@ -230,10 +302,14 @@ export class ProxyServer {
     }
   }
 
-  async restart(): Promise<void> {
+  async restart(): Promise<{
+    started: boolean;
+    reason: string;
+    port?: number;
+  }> {
     logger.info("Restarting server...");
     await this.stop();
-    await this.start();
+    return await this.start();
   }
 
   getStatus(): { isRunning: boolean; port: number; url: string } {
