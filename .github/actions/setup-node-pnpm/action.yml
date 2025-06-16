@@ -1,5 +1,5 @@
 name: "Setup Node.js and pnpm"
-description: "Setup Node.js and pnpm with caching"
+description: "Setup Node.js and pnpm"
 
 inputs:
   skip-checkout:

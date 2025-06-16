@@ -1,24 +1,21 @@
 # Changelog
 
-## [0.2.0] - 2025-06-16
+## [0.2.2] - 2025-06-16
 
-### Added
+### Features
 
-- File system read API support for accessing project files
-
-## [0.1.1] - 2025-06-16
-
-### Changed
-
+- Added file system read API for project file access
+- Added configuration support when creating new Roo tasks
 - Improved extension publishing and dependency management
+- Added Server-Sent Events (SSE) documentation for Roo API
 
-### Infrastructure
+### Bug Fixes
 
-- Added automated publishing workflow
+- Fixed incorrect usage of extensionPack in extension manifest
 
 ## [0.1.0] - 2025-06-14
 
-### Added
+### Features
 
 - Multi-agent support for RooCode and Cline extensions
 - RESTful API server with OpenAPI documentation
