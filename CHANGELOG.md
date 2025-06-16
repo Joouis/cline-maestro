@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.2.5] - 2025-06-17
+
+- Fix logo missing issue and reduce package size by removing unnecessary files
+- Do not show output panel at extension activation
+
 ## [0.2.4] - 2025-06-16
 
 ### Features
