@@ -1,14 +1,16 @@
 import * as vscode from "vscode";
 import { logger } from "./utils/logger";
-import { ExtensionController, ExtensionType } from "./core/controller";
+import { ExtensionController } from "./core/controller";
 import { ProxyServer } from "./server/ProxyServer";
 
 let controller: ExtensionController;
 let proxy: ProxyServer;
 
 export async function activate(context: vscode.ExtensionContext) {
-  // Debugging usage
-  logger.show();
+  // Only show logger automatically in development mode
+  if (context.extensionMode === vscode.ExtensionMode.Development) {
+    logger.show();
+  }
 
   // Initialize the extension controller
   controller = new ExtensionController();
@@ -42,7 +44,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
         if (result.started) {
           vscode.window.showInformationMessage(
-            `Proxy server started on ${proxy.getStatus().url}, you can check all available API endpoints at ${proxy.getOpenAPIUrl()}`,
+            `Agent Maestro server started successfully. View API documentation at ${proxy.getOpenAPIUrl()}`,
           );
         } else {
           // Don't show error message for "another instance running" case
