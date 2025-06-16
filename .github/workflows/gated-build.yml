@@ -1,4 +1,4 @@
-name: PR Check - Gated Build
+name: Gated Build
 
 on:
   pull_request:
@@ -16,6 +16,9 @@ jobs:
     timeout-minutes: 15
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Setup Node.js and pnpm
         uses: ./.github/actions/setup-node-pnpm
 

@@ -1,19 +1,9 @@
 name: "Setup Node.js and pnpm"
 description: "Setup Node.js and pnpm"
 
-inputs:
-  skip-checkout:
-    description: "Skip checkout step"
-    required: false
-    default: "false"
-
 runs:
   using: "composite"
   steps:
-    - name: Checkout repository
-      if: inputs.skip-checkout != 'true'
-      uses: actions/checkout@v4
-
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
