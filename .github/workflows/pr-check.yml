@@ -1,0 +1,48 @@
+name: PR Check - Gated Build
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gated-build:
+    name: Gated Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Setup Node.js and pnpm
+        uses: ./.github/actions/setup-node-pnpm
+
+      - name: Type check
+        run: pnpm run check-types
+
+      - name: Lint code
+        run: pnpm run lint
+
+      - name: Build project
+        run: pnpm run package
+
+      # Not ready yet
+      # - name: Run tests
+      #   run: pnpm run test
+
+  build-status:
+    name: Build Status Check
+    runs-on: ubuntu-latest
+    needs: gated-build
+    if: always()
+
+    steps:
+      - name: Check build result
+        run: |
+          if [ "${{ needs.gated-build.result }}" != "success" ]; then
+            echo "Gated build failed. PR cannot be merged."
+            exit 1
+          fi
+          echo "All checks passed. PR is ready for review."
