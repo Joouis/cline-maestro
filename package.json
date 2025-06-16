@@ -120,7 +120,8 @@
     "test": "vscode-test",
     "prepare": "husky",
     "changeset": "changeset",
-    "changeset:version": "changeset version"
+    "changeset:version": "changeset version",
+    "changeset:tag": "changeset tag"
   },
   "lint-staged": {
     "**/*": "prettier --write --ignore-unknown"
