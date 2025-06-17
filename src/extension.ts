@@ -8,7 +8,8 @@ let proxy: ProxyServer;
 
 export async function activate(context: vscode.ExtensionContext) {
   // Only show logger automatically in development mode
-  if (context.extensionMode === vscode.ExtensionMode.Development) {
+  const isDevMode = context.extensionMode === vscode.ExtensionMode.Development;
+  if (isDevMode) {
     logger.show();
   }
 
@@ -24,7 +25,7 @@ export async function activate(context: vscode.ExtensionContext) {
     );
   }
 
-  proxy = new ProxyServer(controller);
+  proxy = new ProxyServer(controller, isDevMode ? 33333 : undefined);
 
   // Register commands
   const disposables = [
@@ -50,7 +51,6 @@ export async function activate(context: vscode.ExtensionContext) {
           // Don't show error message for "another instance running" case
           if (result.reason === "Another instance is already running") {
             logger.info(`Server startup skipped: ${result.reason}`);
-            logger.info(`API is available at ${proxy.getStatus().url}`);
           } else {
             vscode.window.showInformationMessage(
               `Server startup: ${result.reason}`,

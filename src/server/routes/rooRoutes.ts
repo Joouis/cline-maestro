@@ -3,7 +3,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { v4 as uuidv4 } from "uuid";
 import { logger } from "../../utils/logger";
 import { ExtensionController, ExtensionType } from "../../core/controller";
-import { MessageRequest, ActionRequest } from "../types";
+import { MessageRequest, ActionRequest, TaskHistoryResponse } from "../types";
 
 export enum SSEEventType {
   STREAM_CLOSED = "stream_closed",
@@ -455,6 +455,74 @@ export async function registerRooRoutes(
       } catch (error) {
         logger.error("Error handling task action:", error);
         return reply.status(500).send();
+      }
+    },
+  );
+
+  // GET /api/v1/roo/tasks - Get RooCode task history
+  fastify.get(
+    "/roo/tasks",
+    {
+      schema: {
+        tags: ["Tasks"],
+        summary: "Get RooCode task history",
+        description:
+          "Retrieves the complete task history from RooCode extension configuration",
+        response: {
+          200: {
+            description: "Task history retrieved successfully",
+            type: "object",
+            properties: {
+              data: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    id: { type: "string" },
+                    number: { type: "number" },
+                    ts: { type: "number" },
+                    task: { type: "string" },
+                    tokensIn: { type: "number" },
+                    tokensOut: { type: "number" },
+                    cacheWrites: { type: "number" },
+                    cacheReads: { type: "number" },
+                    totalCost: { type: "number" },
+                    size: { type: "number" },
+                    workspace: { type: "string" },
+                  },
+                  required: [
+                    "id",
+                    "number",
+                    "ts",
+                    "task",
+                    "tokensIn",
+                    "tokensOut",
+                    "totalCost",
+                  ],
+                },
+              },
+            },
+            required: ["data"],
+          },
+          500: {
+            description: "Internal server error",
+            ...{ $ref: "ErrorResponse#" },
+          },
+        },
+      },
+    },
+    async (_request, reply) => {
+      try {
+        return reply.status(200).send({
+          data: controller.rooCodeAdapter.getTaskHistory(),
+        });
+      } catch (error) {
+        logger.error("Error retrieving task history:", error);
+        return reply.status(500).send({
+          status: "failed",
+          message:
+            error instanceof Error ? error.message : "Unknown error occurred",
+        });
       }
     },
   );

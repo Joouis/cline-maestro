@@ -7,6 +7,7 @@ import {
   RooCodeEventName,
 } from "@roo-code/types";
 import { ExtensionBaseAdapter } from "./ExtensionBaseAdapter";
+import { TaskHistoryItem } from "../types/roo";
 
 export interface TaskEventHandlers {
   onMessage?: (taskId: string, message: any) => void;
@@ -496,6 +497,21 @@ export class RooCodeAdapter extends ExtensionBaseAdapter<RooCodeAPI> {
 
     logger.info(`Setting RooCode active profile: ${name}`);
     return await this.api.setActiveProfile(name);
+  }
+
+  /**
+   * Get task history
+   */
+  getTaskHistory(): TaskHistoryItem[] {
+    if (!this.api) {
+      throw new Error("RooCode API not available");
+    }
+
+    logger.info("Retrieving RooCode task history");
+    const configuration = this.api.getConfiguration();
+    const taskHistory = configuration.taskHistory || [];
+    logger.info(`Retrieved ${taskHistory.length} task history items`);
+    return taskHistory;
   }
 
   /**
