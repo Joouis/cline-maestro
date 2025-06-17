@@ -1,67 +1,57 @@
 sequenceDiagram
     participant Client
-    participant ProxyServer as Proxy Server
+    participant Maestro as Agent Maestro
     participant AIAgent as AI Agent (Roo)
     participant MCPServer as MCP Server
 
     Note over Client,AIAgent: New Task Creation
+    Client->>Maestro: POST /roo/task (inital message)
+    Maestro->>AIAgent: Start new task
+    Maestro->>Client: SSE: TASK_CREATED
+    loop Streaming message processing
+        AIAgent->>Maestro: Generate response chunk
+        Maestro->>Client: SSE: MESSAGE (partial)
 
-    Client->>ProxyServer: POST /roo/task (inital message)
-    ProxyServer->>AIAgent: Start new task
-    ProxyServer->>Client: SSE: TASK_CREATED
+        AIAgent->>Maestro: Ask follow-up question
+        Maestro->>Client: SSE: MESSAGE (followup)
+    end
+    Maestro->>Client: SSE: STREAM_CLOSED (followup_question)
+    Note over Client,Maestro: Connection closed
 
-    loop Message Processing
-        AIAgent->>ProxyServer: Generate response chunk
-        ProxyServer->>Client: SSE: MESSAGE (partial)
+    Note over Client,AIAgent: Send Message to Existing Task
+    Client->>Maestro: POST /roo/task/{id}/message (reply question)
+    Maestro->>AIAgent: Check task in history
+    Maestro->>AIAgent: Resume task if needed
+    Maestro->>AIAgent: Send message
+    Maestro->>Client: SSE: TASK_RESUMED
+    loop Streaming message processing
+        AIAgent->>Maestro: Generate response chunk
+        Maestro->>Client: SSE: MESSAGE
 
-        AIAgent->>ProxyServer: Ask follow-up question
-        ProxyServer->>Client: SSE: MESSAGE (followup)
+        AIAgent->>Maestro: Request MCP tool usage
+        Maestro->>Client: SSE: MESSAGE (use_mcp_server)
     end
 
-    Note over Client,AIAgent: Follow-up Message
-    
-    AIAgent->>ProxyServer: Request tool usage
-    ProxyServer->>Client: SSE: MESSAGE (tool request)
-    Client->>ProxyServer: POST /roo/task/{id}/action (approve tool)
-    ProxyServer->>AIAgent: Tool approved
+    Note over Client,AIAgent: Tool Approval
+    Client->>Maestro: POST /roo/task/{id}/action (approve)
+    Maestro->>AIAgent: Click Approve button
     AIAgent->>MCPServer: Execute tool
     MCPServer->>AIAgent: Tool result
-
-    Note over Client,MCPServer: Send Message to Existing Task
-    
-    Client->>ProxyServer: POST /roo/task/{id}/message
-    ProxyServer->>ProxyServer: Check task in history
-    ProxyServer->>AIAgent: Resume task if needed
-    ProxyServer->>Client: SSE: TASK_RESUMED
-    AIAgent->>ProxyServer: Process new message
-    ProxyServer->>Client: SSE: MESSAGE (response)
-    
     alt Tool execution successful
-        AIAgent->>ProxyServer: Process tool result
-        ProxyServer->>Client: SSE: MESSAGE (tool result)
-    else Tool execution failed
-        ProxyServer->>Client: SSE: TOOL_FAILED
-    end
-    
-    Note over Client,AIAgent: Task Continuation/Completion
-    
-    loop Until task complete
-        AIAgent->>ProxyServer: Continue processing
-        ProxyServer->>Client: SSE: MESSAGE (progress)
-        
-        opt Additional tools needed
-            AIAgent->>ProxyServer: Request another tool
-            ProxyServer->>Client: SSE: MESSAGE (tool request)
-            Client->>ProxyServer: POST /roo/task/{id}/action
-            ProxyServer->>AIAgent: Tool approved
-            AIAgent->>MCPServer: Execute tool
-            MCPServer->>AIAgent: Tool result
+        loop Streaming message processing
+            AIAgent->>Maestro: Process tool result
+            Maestro->>Client: SSE: MESSAGE
         end
+    else Tool execution failed
+        Maestro->>Client: SSE: TOOL_FAILED (with error)
     end
-    
-    AIAgent->>ProxyServer: Task completion
-    ProxyServer->>Client: SSE: TASK_COMPLETED
-    ProxyServer->>Client: SSE: STREAM_CLOSED
-    Note over Client: Connection closed
-    
-    Note over Client,AIAgent: Continues with tool approval cycle as above if needed
+
+    Note over Client,AIAgent: Task Completion
+    loop Streaming message processing
+        AIAgent->>Maestro: Continuing response chunk
+        Maestro->>Client: SSE: MESSAGE
+    end
+    AIAgent->>Maestro: Task completion
+    Maestro->>Client: SSE: TASK_COMPLETED (with usage stats)
+    Maestro->>Client: SSE: STREAM_CLOSED (task_completed)
+    Note over Client,Maestro: Connection closed
