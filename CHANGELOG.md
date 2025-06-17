@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.3.0] - 2025-06-17
+
+- Support fetch Roo task history
+- Support `newTab` argument for new Roo task creation
+
 ## [0.2.5] - 2025-06-17
 
 - Fix logo missing issue and reduce package size by removing unnecessary files
