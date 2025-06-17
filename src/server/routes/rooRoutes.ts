@@ -149,7 +149,31 @@ export async function registerRooRoutes(
         summary: "Create a new RooCode task",
         description:
           "Creates and starts a new task using the RooCode extension. Returns Server-Sent Events stream for task progress.",
-        body: { $ref: "MessageRequest#" },
+        body: {
+          type: "object",
+          properties: {
+            text: {
+              type: "string",
+              description: "The task query text",
+            },
+            images: {
+              type: "array",
+              items: { type: "string" },
+              description:
+                "Optional array of image URLs or base64 encoded images",
+            },
+            configuration: {
+              type: "object",
+              description: "RooCode configuration settings",
+            },
+            newTab: {
+              type: "boolean",
+              description:
+                "Whether to open the task in a new tab. Note: When enabled, users cannot send follow-up messages due to issue https://github.com/RooCodeInc/Roo-Code/issues/4412",
+            },
+          },
+          required: ["text"],
+        },
         response: {
           200: {
             description: "Server-Sent Events stream for task progress",
@@ -176,7 +200,8 @@ export async function registerRooRoutes(
     },
     async (request, reply) => {
       try {
-        const { text, images, configuration } = request.body as MessageRequest;
+        const { text, images, configuration, newTab } =
+          request.body as MessageRequest;
 
         if (!text || text.trim() === "") {
           return reply.status(400).send({
@@ -205,6 +230,7 @@ export async function registerRooRoutes(
               text,
               images,
               configuration,
+              newTab,
               eventHandlers,
             },
             ExtensionType.ROO_CODE,

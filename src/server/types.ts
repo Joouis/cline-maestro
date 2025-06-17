@@ -5,6 +5,7 @@ export interface MessageRequest {
   text: string;
   images?: string[];
   configuration?: RooCodeSettings;
+  newTab?: boolean;
 }
 
 export interface ActionRequest {

@@ -1,4 +1,5 @@
-export const API_BASE_URL = "http://127.0.0.1:23333/api/v1/roo";
+const PORT = 33333; // Dev mode port for Agent Maestro
+export const API_BASE_URL = `http://127.0.0.1:${PORT}/api/v1/roo`;
 
 export const API_ENDPOINTS = {
   TASK: `${API_BASE_URL}/task`,

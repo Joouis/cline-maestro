@@ -103,7 +103,7 @@ export class ExtensionController extends EventEmitter {
           configuration: options.configuration,
           text: options.text,
           images: options.images,
-          // newTab: options.newTab ?? true,
+          newTab: options.newTab,
           eventHandlers: options.eventHandlers,
         });
       default:
