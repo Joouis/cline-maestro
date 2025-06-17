@@ -34,7 +34,7 @@ Install RooCode or its variants from the VS Code marketplace to ensure full func
 
 ### Installation
 
-Install the Agent Maestro extension from the VS Code Marketplace. Once activated, Agent Maestro automatically starts its API server on startup.
+Install the [Agent Maestro extension](https://marketplace.visualstudio.com/items?itemName=Joouis.agent-maestro) from the VS Code Marketplace. Once activated, Agent Maestro automatically starts its API server on startup.
 
 ### Usage
 
@@ -63,6 +63,8 @@ This workflow shows how tasks are created, how messages flow between the client 
 ## API Overview
 
 Agent Maestro exposes a RESTful API that abstracts the complexity of different AI coding agents into a unified interface.
+
+_Note: For latest API documentation, always refer to `/api/v1/openapi.json`._
 
 **Base URL**: `http://localhost:23333/api/v1`
 
