@@ -5,7 +5,7 @@ sequenceDiagram
     participant MCPServer as MCP Server
 
     Note over Client,AIAgent: New Task Creation
-    Client->>Maestro: POST /roo/task (inital message)
+    Client->>Maestro: POST /roo/task (initial message)
     Maestro->>AIAgent: Start new task
     Maestro->>Client: SSE: TASK_CREATED
     loop Streaming message processing
