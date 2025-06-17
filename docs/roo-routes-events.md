@@ -239,7 +239,7 @@ The RooRoutes API emits 8 distinct event types that cover the complete lifecycle
 ### New Task Creation Flow
 
 ```
-Client                           RooRoutes API                           AI Agent
+Client                         Proxy Server                         AI Agent (Roo)
   |                                 |                                     |
   | POST /roo/task                  |                                     |
   |-------------------------------->|                                     |
@@ -265,7 +265,7 @@ Client                           RooRoutes API                           AI Agen
 ### Send Message Flow
 
 ```
-Client                           RooRoutes API                           AI Agent
+Client                         Proxy Server                         AI Agent (Roo)
   |                                 |                                     |
   | POST /roo/task/{id}/message     |                                     |
   |-------------------------------->|                                     |
@@ -282,7 +282,7 @@ Client                           RooRoutes API                           AI Agen
 ### Error Handling Flow
 
 ```
-Client                           RooRoutes API                           AI Agent
+Client                         Proxy Server                         AI Agent (Roo)
   |                                 |                                     |
   | POST /roo/task                  |                                     |
   |-------------------------------->|                                     |
