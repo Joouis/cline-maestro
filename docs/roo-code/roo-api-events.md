@@ -118,6 +118,52 @@ type ClineAsk =
   | "auto_approval_max_req_reached"; // Manual approval after auto-limit
 ```
 
+**ClineAsk message.text Data Types:**
+
+- **`followup`**: JSON string containing followup question data
+
+  - Structure: `{ question: string, suggest: Array<{ answer: string }> }`
+  - Example: `{"question":"What type of app?","suggest":[{"answer":"React web app"},{"answer":"Node.js CLI"}]}`
+
+- **`command`**: Plain text string containing the command to execute
+
+  - Example: `"npm install express"`
+
+- **`command_output`**: Empty string (`""`)
+
+  - No content in message.text
+
+- **`completion_result`**: Plain text string (task result) OR empty string when relinquishing control
+
+  - Example: `"Task completed successfully. Created a new React component."`
+
+- **`tool`**: JSON string containing tool operation data (see [Tool Data Structures](#tool-data-structures))
+
+  - Example: `{"tool":"readFile","path":"src/app.js","content":"..."}`
+
+- **`api_req_failed`**: Plain text string containing error message
+
+  - Example: `"API request failed: Rate limit exceeded"`
+
+- **`resume_task`** / **`resume_completed_task`**: `undefined` (no text content)
+
+- **`mistake_limit_reached`**: Plain text string with guidance message
+
+  - Example: `"Too many mistakes. Please review and try again."`
+
+- **`browser_action_launch`**: Plain text string describing browser action
+
+  - Example: `"Launch browser to navigate to localhost:3000"`
+
+- **`use_mcp_server`**: JSON string containing MCP server request data
+
+  - Structure: `{ type: "use_mcp_tool" | "access_mcp_resource", serverName: string, ... }`
+  - Example: `{"type":"use_mcp_tool","serverName":"weather","toolName":"get_forecast"}`
+
+- **`auto_approval_max_req_reached`**: JSON string with request count
+  - Structure: `{ count: number }`
+  - Example: `{"count":10}`
+
 #### ClineSay Types (Informational Messages)
 
 ```typescript
@@ -147,6 +193,99 @@ type ClineSay =
   | "condense_context_error" // Context condensation errors
   | "codebase_search_result"; // Codebase search results
 ```
+
+**ClineSay message.text Data Types:**
+
+- **`error`**: Plain text string containing error message
+
+  - Example: `"File not found: src/missing.js"`
+
+- **`api_req_started`**: JSON string containing API request info
+
+  - Structure: `{ request?: string, tokensIn?: number, tokensOut?: number, cacheWrites?: number, cacheReads?: number, cost?: number, cancelReason?: string, streamingFailedMessage?: string }`
+  - Example: `{"request":"claude-3-5-sonnet","tokensIn":1500,"cost":0.023}`
+
+- **`api_req_finished`**: JSON string (legacy, no longer used)
+
+- **`api_req_retried`**: `undefined` (no text content)
+
+- **`api_req_retry_delayed`**: Plain text string with retry information
+
+  - Example: `"Retrying in 5 seconds due to rate limit..."`
+
+- **`api_req_deleted`**: `undefined` (no text content)
+
+- **`text`**: Plain text string (general assistant response)
+
+  - Example: `"I'll help you create that React component."`
+
+- **`reasoning`**: Plain text string containing LLM reasoning
+
+  - Example: `"I need to first check if the file exists before modifying it."`
+
+- **`completion_result`**: Plain text string with completion result
+
+  - Example: `"Successfully created the requested features."`
+
+- **`user_feedback`**: Plain text string containing user's feedback
+
+  - Example: `"Please add error handling to the function."`
+
+- **`user_feedback_diff`**: JSON string containing diff data
+
+  - Structure: `{ tool: string, diff?: string, ... }`
+  - Example: `{"tool":"appliedDiff","diff":"+ console.log('Added logging');"}`
+
+- **`command_output`**: Plain text string containing terminal output
+
+  - Example: `"npm install completed successfully\n✓ Dependencies installed"`
+
+- **`shell_integration_warning`**: `undefined` (no text content)
+
+- **`browser_action`**: JSON string containing browser action data
+
+  - Structure: `{ action: string, coordinate?: string, size?: string, text?: string }`
+  - Example: `{"action":"click","coordinate":"100,200"}`
+
+- **`browser_action_result`**: JSON string containing browser action results
+
+  - Structure: `{ screenshot?: string, logs?: string, currentUrl?: string, currentMousePosition?: string }`
+  - Example: `{"currentUrl":"http://localhost:3000","logs":"Page loaded successfully"}`
+
+- **`mcp_server_request_started`**: `undefined` (no text content)
+
+- **`mcp_server_response`**: JSON string (tool-specific structure)
+
+  - **Structure**: Varies by MCP tool and depends on the tool's response schema
+  - **Usage**: Use `serverName` and `toolName` from the corresponding MCP request to determine expected structure
+  - **Note**: Check MCP tool documentation for specific response formats
+  - Example: `{"temperature": 72, "condition": "sunny", "humidity": 45}`
+
+- **`subtask_result`**: Plain text string containing subtask result
+
+  - Example: `"Subtask completed: File validation successful"`
+
+- **`checkpoint_saved`**: Plain text string containing commit hash
+
+  - Example: `"abc123def456"`
+
+- **`rooignore_error`**: Plain text string containing file path that was blocked
+
+  - Example: `"src/sensitive-file.env"`
+
+- **`diff_error`**: Plain text string containing diff error details
+
+  - Example: `"Failed to apply diff: Line 15 not found"`
+
+- **`condense_context`**: `undefined` (no text content, uses contextCondense field)
+
+- **`condense_context_error`**: Plain text string containing condensation error
+
+  - Example: `"Failed to condense context: Memory limit exceeded"`
+
+- **`codebase_search_result`**: JSON string containing search results
+  - Structure: `{ content: { query: string, results: Array<{ filePath: string, score: number, startLine: number, endLine: number, codeChunk: string }> } }`
+  - Example: `{"content":{"query":"function auth","results":[{"filePath":"src/auth.js","score":0.95,"startLine":10,"endLine":25,"codeChunk":"function authenticate(user) {...}"}]}}`
 
 **Example:**
 
