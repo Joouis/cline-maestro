@@ -49,6 +49,7 @@ Install the [Agent Maestro extension](https://marketplace.visualstudio.com/items
    - `Agent Maestro: Get API Server Status` - Check current server status
 
 3. **Development Resources**:
+   - **API Documentation**: Complete reference in [docs/roo-code/](docs/roo-code/README.md) for all Roo Code interfaces, events, and message structures
    - **Type Definitions**: Explore the [@roo-code/types](https://www.npmjs.com/package/@roo-code/types) package for detailed event structures and data models
    - **Examples**: The `examples/demo-site` directory is intended for internal testing purposes only. You may reference its implementation of Roo Code event handling as an example, but note that this sub-project is not officially supported.
 
@@ -76,7 +77,11 @@ _Note: For latest API documentation, always refer to `/api/v1/openapi.json`._
 
 **Server-Sent Events (SSE):**
 
-The RooCode routes provide real-time streaming updates through Server-Sent Events, delivering live task progress and status information. For detailed documentation on SSE event structures, flows, and implementation details, see [RooRoutes Events Documentation](docs/roo-routes-events.md).
+The RooCode routes provide real-time streaming updates through Server-Sent Events, delivering live task progress and status information. For detailed documentation on:
+
+- **SSE Event Types & Flows**: [RooRoutes Events Documentation](docs/roo-routes-events.md)
+- **Message Data Structures**: [Roo Code API Events](docs/roo-code/roo-api-events.md)
+- **Complete API Reference**: [Roo Code API Documentation](docs/roo-code/README.md)
 
 **Cline Agent Routes:**
 
@@ -85,6 +90,21 @@ The RooCode routes provide real-time streaming updates through Server-Sent Event
 **Documentation Routes:**
 
 - `GET /api/v1/openapi.json` - Complete OpenAPI v3 specification
+
+## Roo Code API Documentation
+
+Agent Maestro provides comprehensive documentation for understanding and working with Roo Code API messages, events, and data structures. These resources help developers integrate effectively with the Roo Code extension.
+
+### 📚 [Complete API Documentation](docs/roo-code/README.md)
+
+Comprehensive documentation covering all Roo Code API interfaces:
+
+- **[API Overview](docs/roo-code/roo-api-overview.md)**: Core interfaces, task management, and configuration
+- **[Event System](docs/roo-code/roo-api-events.md)**: Event-driven architecture and message handling
+- **[Provider Configuration](docs/roo-code/roo-api-providers.md)**: AI provider settings and profile management
+- **[Tools & Data Types](docs/roo-code/roo-api-tools.md)**: Tool usage, message structures, and IPC communication
+
+These documents provide detailed schemas, examples, and implementation guidance for all messages emitted by the Roo Code extension.
 
 ## Roadmap
 
