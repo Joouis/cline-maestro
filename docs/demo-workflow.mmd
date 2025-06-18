@@ -19,7 +19,7 @@ sequenceDiagram
     Note over Client,Maestro: Connection closed
 
     Note over Client,AIAgent: Send Message to Existing Task
-    Client->>Maestro: POST /roo/task/{id}/message (reply question)
+    Client->>Maestro: POST /roo/task/{id}/message (reply to question)
     Maestro->>AIAgent: Check task in history
     Maestro->>AIAgent: Resume task if needed
     Maestro->>AIAgent: Send message
@@ -48,7 +48,7 @@ sequenceDiagram
 
     Note over Client,AIAgent: Task Completion
     loop Streaming message processing
-        AIAgent->>Maestro: Continuing response chunk
+        AIAgent->>Maestro: Continue response chunk
         Maestro->>Client: SSE: MESSAGE
     end
     AIAgent->>Maestro: Task completion

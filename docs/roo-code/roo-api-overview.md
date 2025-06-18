@@ -282,7 +282,7 @@ interface GlobalSettings {
 
 Provider-specific configuration options for AI services and integrations.
 
-> **For comprehensive ProviderSettings documentation** including all supported AI providers, provider-specific configurations, authentication methods, and profile management, see the [Provider Configuration Guide](roo-api-providers.md).
+**For comprehensive ProviderSettings documentation** including all supported AI providers, provider-specific configurations, authentication methods, and profile management, see the [Provider Configuration Guide](roo-api-providers.md).
 
 The ProviderSettings interface includes configurations for 20+ AI providers such as Anthropic Claude, OpenRouter, AWS Bedrock, Google Vertex AI, OpenAI-compatible APIs, and local models like Ollama and LM Studio.
 
