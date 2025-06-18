@@ -75,12 +75,6 @@ Each documentation file is comprehensive (600+ lines) and includes:
 - **Error handling patterns** and troubleshooting guides
 - **Cross-references** to related functionality
 
-## Related Documentation
-
-- **Extension API**: See `docs/api/README.md` for general extension documentation
-- **Source Code**: Primary implementation in `src/extension/api.ts`
-- **Type Definitions**: Full type definitions available in the packages directory
-
 ---
 
 _This documentation was generated to provide comprehensive coverage of the RooCode API for developers, integrators, and contributors working with the RooCode extension ecosystem._
