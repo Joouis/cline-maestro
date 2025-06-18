@@ -1,6 +1,6 @@
 export interface TaskHistoryItem {
   id: string;
-  number: number;
+  number?: number;
   ts: number;
   task: string;
   tokensIn: number;

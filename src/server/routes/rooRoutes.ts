@@ -518,7 +518,7 @@ export async function registerRooRoutes(
                   },
                   required: [
                     "id",
-                    "number",
+                    // "number",
                     "ts",
                     "task",
                     "tokensIn",
