@@ -1,65 +1,39 @@
-# RooCode API Documentation
+# Roo Code API Overview
 
-Comprehensive documentation for all RooCode API interfaces, types, and their relationships.
+The Roo Code API provides programmatic access to Roo Code's core functionality through well-defined TypeScript interfaces. This document covers the main API interfaces and configuration types.
 
 ## Table of Contents
 
-1. [Overview](#overview)
-2. [Core API Interfaces](#core-api-interfaces)
-3. [Event System](#event-system)
-4. [Configuration Types](#configuration-types)
-5. [Message Types](#message-types)
-6. [Tool System](#tool-system)
-7. [IPC Communication](#ipc-communication)
-8. [Provider Settings](#provider-settings)
-9. [Mode Configuration](#mode-configuration)
-10. [Usage Examples](#usage-examples)
+1. [RooCodeAPI Interface](#roocodeapi-interface)
+2. [RooCodeSettings Type](#roocodesettings-type)
+3. [RooCodeIpcServer Interface](#roocodeipcserver-interface)
+4. [Configuration Management](#configuration-management)
+5. [Profile Management](#profile-management)
+6. [Usage Examples](#usage-examples)
 
 ---
 
-## Overview
+## RooCodeAPI Interface
 
-The RooCode API provides a comprehensive interface for integrating with and extending the RooCode VS Code extension. The API is built around three main interfaces:
-
-- **[`RooCodeAPI`](packages/types/src/api.ts:26)** - Main API interface for task management and configuration
-- **[`RooCodeAPIEvents`](packages/types/src/api.ts:11)** - Event system for monitoring task lifecycle
-- **[`RooCodeIpcServer`](packages/types/src/api.ts:153)** - IPC server for inter-process communication
-
-### Key Features
-
-- **Task Management**: Create, resume, pause, and control AI-assisted tasks
-- **Event-Driven Architecture**: Real-time notifications of task state changes
-- **Configuration Management**: Manage API provider settings and profiles
-- **Tool Integration**: Access to file operations, command execution, and browser automation
-- **Mode System**: Support for specialized AI modes with different capabilities
-- **IPC Communication**: Inter-process communication for external integrations
-
----
-
-## Core API Interfaces
-
-### RooCodeAPI
-
-The main API interface that extends EventEmitter with RooCode-specific events.
+The main API interface that extends EventEmitter to provide task management and configuration capabilities.
 
 ```typescript
 interface RooCodeAPI extends EventEmitter<RooCodeAPIEvents> {
   // Task Management
-  startNewTask(options: StartNewTaskOptions): Promise<string>;
+  startNewTask(params: StartTaskParams): Promise<string>;
   resumeTask(taskId: string): Promise<void>;
+  isTaskInHistory(taskId: string): Promise<boolean>;
+  getCurrentTaskStack(): string[];
   clearCurrentTask(lastMessage?: string): Promise<void>;
   cancelCurrentTask(): Promise<void>;
 
-  // Task Communication
+  // Communication
   sendMessage(message?: string, images?: string[]): Promise<void>;
   pressPrimaryButton(): Promise<void>;
   pressSecondaryButton(): Promise<void>;
 
-  // Task Information
-  isTaskInHistory(taskId: string): Promise<boolean>;
-  getCurrentTaskStack(): string[];
-
-  // Configuration Management
+  // Configuration
+  isReady(): boolean;
   getConfiguration(): RooCodeSettings;
   setConfiguration(values: RooCodeSettings): Promise<void>;
 
@@ -84,90 +58,118 @@ interface RooCodeAPI extends EventEmitter<RooCodeAPIEvents> {
   deleteProfile(name: string): Promise<void>;
   getActiveProfile(): string | undefined;
   setActiveProfile(name: string): Promise<string | undefined>;
-
-  // System Status
-  isReady(): boolean;
 }
 ```
 
-#### StartNewTaskOptions
+### Task Management Methods
+
+#### `startNewTask(params: StartTaskParams): Promise<string>`
+
+Creates and starts a new task with optional configuration, text, and images.
+
+**Parameters:**
+
+- `configuration?: RooCodeSettings` - Task-specific configuration overrides
+- `text?: string` - Initial message text
+- `images?: string[]` - Array of base64-encoded image data URIs
+- `newTab?: boolean` - Whether to open the task in a new tab
+
+**Returns:** Promise resolving to the new task ID
+
+**Example:**
 
 ```typescript
-interface StartNewTaskOptions {
-  configuration?: RooCodeSettings; // Optional configuration override
-  text?: string; // Initial task message
-  images?: string[]; // Array of image data URIs
-  newTab?: boolean; // Whether to open in new tab
-}
+const taskId = await api.startNewTask({
+  configuration: {
+    mode: "debug",
+    alwaysAllowExecute: true,
+  },
+  text: "Help me debug this function",
+  images: ["data:image/png;base64,iVBORw0KGgoAAAANS..."],
+  newTab: true,
+});
 ```
 
-### RooCodeIpcServer
+#### `resumeTask(taskId: string): Promise<void>`
 
-IPC server interface for inter-process communication.
+Resumes a previously paused or stopped task from the task history.
 
-```typescript
-interface RooCodeIpcServer extends EventEmitter<IpcServerEvents> {
-  listen(): void; // Start listening for connections
-  broadcast(message: IpcMessage): void; // Broadcast to all clients
-  send(client: string | Socket, message: IpcMessage): void; // Send to specific client
-  get socketPath(): string; // Unix socket path
-  get isListening(): boolean; // Server status
-}
-```
+**Parameters:**
+
+- `taskId: string` - The ID of the task to resume
+
+**Throws:** Error if the task is not found in history
+
+#### `isTaskInHistory(taskId: string): Promise<boolean>`
+
+Checks if a task exists in the task history.
+
+**Parameters:**
+
+- `taskId: string` - The task ID to check
+
+**Returns:** Promise resolving to true if task exists in history
+
+#### `getCurrentTaskStack(): string[]`
+
+Returns the current task stack showing active and parent tasks.
+
+**Returns:** Array of task IDs representing the current task hierarchy
+
+#### `clearCurrentTask(lastMessage?: string): Promise<void>`
+
+Clears the current task with an optional final message.
+
+**Parameters:**
+
+- `lastMessage?: string` - Optional final message to send before clearing
+
+#### `cancelCurrentTask(): Promise<void>`
+
+Cancels the currently active task immediately.
+
+### Communication Methods
+
+#### `sendMessage(message?: string, images?: string[]): Promise<void>`
+
+Sends a message to the current active task.
+
+**Parameters:**
+
+- `message?: string` - Text message to send
+- `images?: string[]` - Optional array of base64-encoded images
+
+#### `pressPrimaryButton(): Promise<void>`
+
+Simulates clicking the primary action button in the chat interface (typically "Continue" or "Approve").
+
+#### `pressSecondaryButton(): Promise<void>`
+
+Simulates clicking the secondary action button in the chat interface (typically "Reject" or "Cancel").
+
+### Configuration Methods
+
+#### `isReady(): boolean`
+
+Returns whether the API is initialized and ready for use.
+
+#### `getConfiguration(): RooCodeSettings`
+
+Returns the current configuration settings.
+
+#### `setConfiguration(values: RooCodeSettings): Promise<void>`
+
+Updates the configuration with the provided values.
+
+**Parameters:**
+
+- `values: RooCodeSettings` - Configuration object with settings to update
 
 ---
 
-## Event System
+## RooCodeSettings Type
 
-### RooCodeAPIEvents
-
-The event system provides real-time notifications about task lifecycle and system state changes.
-
-```typescript
-interface RooCodeAPIEvents {
-  message: [
-    data: {
-      taskId: string;
-      action: "created" | "updated";
-      message: ClineMessage;
-    },
-  ];
-  taskCreated: [taskId: string];
-  taskStarted: [taskId: string];
-  taskModeSwitched: [taskId: string, mode: string];
-  taskPaused: [taskId: string];
-  taskUnpaused: [taskId: string];
-  taskAskResponded: [taskId: string];
-  taskAborted: [taskId: string];
-  taskSpawned: [parentTaskId: string, childTaskId: string];
-  taskCompleted: [taskId: string, tokenUsage: TokenUsage, toolUsage: ToolUsage];
-  taskTokenUsageUpdated: [taskId: string, tokenUsage: TokenUsage];
-  taskToolFailed: [taskId: string, toolName: ToolName, error: string];
-}
-```
-
-#### Event Descriptions
-
-- **`message`**: Fired when a message is created or updated in a task
-- **`taskCreated`**: A new task has been created
-- **`taskStarted`**: A task has begun execution
-- **`taskModeSwitched`**: Task switched to a different AI mode
-- **`taskPaused`**: Task execution has been paused
-- **`taskUnpaused`**: Task execution has resumed
-- **`taskAskResponded`**: User has responded to a task's question
-- **`taskAborted`**: Task was cancelled or aborted
-- **`taskSpawned`**: A task created a subtask
-- **`taskCompleted`**: Task finished with usage statistics
-- **`taskTokenUsageUpdated`**: Token usage metrics updated
-- **`taskToolFailed`**: A tool operation failed
-
----
-
-## Configuration Types
-
-### RooCodeSettings
-
-Combined settings type that includes both global settings and provider settings.
+The complete configuration type that combines global settings with provider-specific settings. RooCodeSettings is a union type that brings together GlobalSettings and ProviderSettings to provide a comprehensive configuration interface.
 
 ```typescript
 type RooCodeSettings = GlobalSettings & ProviderSettings;
@@ -276,327 +278,144 @@ interface GlobalSettings {
 }
 ```
 
+### ProviderSettings
+
+Provider-specific configuration options for AI services and integrations.
+
+> **For comprehensive ProviderSettings documentation** including all supported AI providers, provider-specific configurations, authentication methods, and profile management, see the [Provider Configuration Guide](roo-api-providers.md).
+
+The ProviderSettings interface includes configurations for 20+ AI providers such as Anthropic Claude, OpenRouter, AWS Bedrock, Google Vertex AI, OpenAI-compatible APIs, and local models like Ollama and LM Studio.
+
 ---
 
-## Message Types
+## RooCodeIpcServer Interface
 
-### ClineMessage
-
-Represents a message in the conversation between user and AI.
+Interface for the IPC (Inter-Process Communication) server that handles communication between different processes.
 
 ```typescript
-interface ClineMessage {
-  ts: number; // Timestamp
-  type: "ask" | "say"; // Message type
-  ask?: ClineAsk; // Ask type (if type is "ask")
-  say?: ClineSay; // Say type (if type is "say")
-  text?: string; // Message content
-  images?: string[]; // Attached images
-  partial?: boolean; // Is message still being generated
-  reasoning?: string; // AI reasoning (internal)
-  conversationHistoryIndex?: number; // Position in conversation
-  checkpoint?: Record<string, unknown>; // State checkpoint
-  progressStatus?: ToolProgressStatus; // Tool progress info
-  contextCondense?: ContextCondense; // Context condensation info
-  isProtected?: boolean; // Message protection flag
+interface RooCodeIpcServer extends EventEmitter<IpcServerEvents> {
+  listen(): void; // Start listening for connections
+  broadcast(message: IpcMessage): void; // Broadcast message to all clients
+  send(client: string | Socket, message: IpcMessage): void; // Send to specific client
+  get socketPath(): string; // Get the socket path
+  get isListening(): boolean; // Check if server is listening
 }
 ```
 
-### ClineAsk Types
+### IPC Server Methods
 
-Requests for user interaction or approval:
+#### `listen(): void`
 
-```typescript
-type ClineAsk =
-  | "followup" // Clarifying question
-  | "command" // Terminal command permission
-  | "command_output" // Command output permission
-  | "completion_result" // Task completion confirmation
-  | "tool" // Tool usage permission
-  | "api_req_failed" // API retry permission
-  | "resume_task" // Resume task confirmation
-  | "resume_completed_task" // Resume completed task
-  | "mistake_limit_reached" // Error limit guidance
-  | "browser_action_launch" // Browser permission
-  | "use_mcp_server" // MCP server permission
-  | "auto_approval_max_req_reached"; // Manual approval required
-```
+Starts the IPC server and begins listening for client connections.
 
-### ClineSay Types
+#### `broadcast(message: IpcMessage): void`
 
-Different types of AI responses:
+Sends a message to all connected clients.
 
-```typescript
-type ClineSay =
-  | "error" // Error message
-  | "api_req_started" // API request started
-  | "api_req_finished" // API request completed
-  | "api_req_retried" // API request retried
-  | "api_req_retry_delayed" // Retry delayed
-  | "api_req_deleted" // Request cancelled
-  | "text" // General text
-  | "reasoning" // AI reasoning
-  | "completion_result" // Task result
-  | "user_feedback" // User feedback
-  | "user_feedback_diff" // Diff feedback
-  | "command_output" // Command output
-  | "shell_integration_warning" // Shell warning
-  | "browser_action" // Browser action
-  | "browser_action_result" // Browser result
-  | "mcp_server_request_started" // MCP request started
-  | "mcp_server_response" // MCP response
-  | "subtask_result" // Subtask result
-  | "checkpoint_saved" // Checkpoint saved
-  | "rooignore_error" // Rooignore error
-  | "diff_error" // Diff error
-  | "condense_context" // Context condensation
-  | "condense_context_error" // Condensation error
-  | "codebase_search_result"; // Search results
-```
+#### `send(client: string | Socket, message: IpcMessage): void`
 
-### TokenUsage
+Sends a message to a specific client identified by client ID or socket.
 
-Tracks API token consumption and costs.
+---
+
+## Configuration Management
+
+### Global vs Provider Settings
+
+Roo Code uses a hierarchical configuration system:
+
+1. **Global Settings**: Application-wide settings that affect all tasks
+2. **Provider Settings**: API provider-specific configurations
+3. **Mode Settings**: Mode-specific overrides
+4. **Task Settings**: Task-specific configuration overrides
+
+### Configuration Precedence
+
+Settings are applied in order of precedence (highest to lowest):
+
+1. Task-specific configuration (passed to `startNewTask`)
+2. Active profile settings
+3. Mode-specific settings
+4. Global settings
+5. Default values
+
+### Secret Management
+
+Sensitive settings (API keys, tokens) are handled separately:
 
 ```typescript
-interface TokenUsage {
-  totalTokensIn: number; // Input tokens consumed
-  totalTokensOut: number; // Output tokens generated
-  totalCacheWrites?: number; // Cache write operations
-  totalCacheReads?: number; // Cache read operations
-  totalCost: number; // Total API cost
-  contextTokens: number; // Context tokens used
-}
+const SECRET_STATE_KEYS = [
+  "apiKey",
+  "glamaApiKey",
+  "openRouterApiKey",
+  "awsAccessKey",
+  "awsSecretKey",
+  "awsSessionToken",
+  "openAiApiKey",
+  "geminiApiKey",
+  "openAiNativeApiKey",
+  "deepSeekApiKey",
+  "mistralApiKey",
+  "unboundApiKey",
+  "requestyApiKey",
+  "xaiApiKey",
+  "groqApiKey",
+  "chutesApiKey",
+  "litellmApiKey",
+] as const;
 ```
 
 ---
 
-## Tool System
+## Profile Management
 
-### ToolName
+Profiles allow users to save and switch between different API configurations.
 
-Available tools for AI operations:
+### Profile Operations
 
-```typescript
-type ToolName =
-  | "execute_command" // Execute terminal commands
-  | "read_file" // Read file contents
-  | "write_to_file" // Write/create files
-  | "apply_diff" // Apply code diffs
-  | "insert_content" // Insert content into files
-  | "search_and_replace" // Find and replace text
-  | "search_files" // Search across files
-  | "list_files" // List directory contents
-  | "list_code_definition_names" // Extract code definitions
-  | "browser_action" // Browser automation
-  | "use_mcp_tool" // Use MCP tools
-  | "access_mcp_resource" // Access MCP resources
-  | "ask_followup_question" // Ask user questions
-  | "attempt_completion" // Mark task complete
-  | "switch_mode" // Change AI mode
-  | "new_task" // Create new task
-  | "fetch_instructions" // Get mode instructions
-  | "codebase_search"; // Semantic code search
-```
-
-### ToolGroup
-
-Tool categories for mode configuration:
+#### Creating Profiles
 
 ```typescript
-type ToolGroup =
-  | "read" // File reading operations
-  | "edit" // File editing operations
-  | "browser" // Browser automation
-  | "command" // Terminal commands
-  | "mcp" // MCP integrations
-  | "modes"; // Mode switching
-```
-
-### ToolUsage
-
-Tracks tool usage statistics:
-
-```typescript
-type ToolUsage = Record<
-  ToolName,
+// Create a new profile
+const profileId = await api.createProfile(
+  "development",
   {
-    attempts: number; // Number of times tool was attempted
-    failures: number; // Number of failures
-  }
->;
+    apiProvider: "anthropic",
+    apiKey: "sk-...",
+    apiModelId: "claude-3-sonnet-20240229",
+  },
+  true,
+); // true = activate immediately
 ```
 
----
-
-## IPC Communication
-
-### IpcMessage Types
-
-Messages for inter-process communication:
+#### Managing Profiles
 
 ```typescript
-type IpcMessage =
-  | {
-      type: "Ack";
-      origin: "server";
-      data: Ack;
-    }
-  | {
-      type: "TaskCommand";
-      origin: "client";
-      clientId: string;
-      data: TaskCommand;
-    }
-  | {
-      type: "TaskEvent";
-      origin: "server";
-      relayClientId?: string;
-      data: TaskEvent;
-    };
+// List all profiles
+const profiles = api.getProfiles();
+
+// Get profile details
+const profile = api.getProfileEntry("development");
+
+// Update existing profile
+await api.updateProfile("development", {
+  apiModelId: "claude-3-opus-20240229",
+});
+
+// Switch active profile
+await api.setActiveProfile("production");
+
+// Delete profile
+await api.deleteProfile("old-profile");
 ```
 
-### TaskCommand
-
-Commands sent from clients to server:
-
-```typescript
-type TaskCommand =
-  | {
-      commandName: "StartNewTask";
-      data: {
-        configuration: RooCodeSettings;
-        text: string;
-        images?: string[];
-        newTab?: boolean;
-      };
-    }
-  | {
-      commandName: "CancelTask";
-      data: string; // taskId
-    }
-  | {
-      commandName: "CloseTask";
-      data: string; // taskId
-    };
-```
-
-### TaskEvent
-
-Events sent from server to clients:
-
-```typescript
-interface TaskEvent {
-  eventName: RooCodeEventName;
-  payload: EventPayload; // Type varies by event
-  taskId?: number; // Optional task ID
-}
-```
-
----
-
-## Provider Settings
-
-### ProviderName
-
-Supported AI providers:
-
-```typescript
-type ProviderName =
-  | "anthropic" // Anthropic Claude
-  | "openai" // OpenAI GPT
-  | "openai-native" // OpenAI Native API
-  | "openrouter" // OpenRouter
-  | "bedrock" // AWS Bedrock
-  | "vertex" // Google Vertex AI
-  | "gemini" // Google Gemini
-  | "ollama" // Ollama
-  | "vscode-lm" // VS Code Language Models
-  | "lmstudio" // LM Studio
-  | "mistral" // Mistral AI
-  | "deepseek" // DeepSeek
-  | "groq" // Groq
-  | "xai" // xAI
-  | "glama" // Glama
-  | "unbound" // Unbound
-  | "requesty" // Requesty
-  | "chutes" // Chutes
-  | "litellm" // LiteLLM
-  | "human-relay" // Human Relay
-  | "fake-ai"; // Testing/Debug
-```
-
-### ProviderSettingsEntry
-
-Provider profile metadata:
+#### Profile Structure
 
 ```typescript
 interface ProviderSettingsEntry {
   id: string; // Unique profile ID
   name: string; // Display name
   apiProvider?: ProviderName; // Provider type
-}
-```
-
-### ProviderSettings
-
-Provider-specific configuration settings. Each provider has its own set of configuration options:
-
-```typescript
-interface ProviderSettings {
-  apiProvider?: ProviderName;
-
-  // Base settings (common to all providers)
-  includeMaxTokens?: boolean;
-  diffEnabled?: boolean;
-  fuzzyMatchThreshold?: number;
-  modelTemperature?: number | null;
-  rateLimitSeconds?: number;
-  enableReasoningEffort?: boolean;
-  reasoningEffort?: ReasoningEffort;
-  modelMaxTokens?: number;
-  modelMaxThinkingTokens?: number;
-
-  // Provider-specific settings (examples)
-  apiKey?: string; // Anthropic, OpenAI, etc.
-  apiModelId?: string; // Model ID
-  anthropicBaseUrl?: string; // Custom base URL
-  openAiBaseUrl?: string; // OpenAI base URL
-  awsRegion?: string; // Bedrock region
-  // ... many more provider-specific options
-}
-```
-
----
-
-## Mode Configuration
-
-### ModeConfig
-
-Configuration for custom AI modes:
-
-```typescript
-interface ModeConfig {
-  slug: string; // Unique identifier (alphanumeric + dashes)
-  name: string; // Display name
-  roleDefinition: string; // AI role description
-  whenToUse?: string; // Usage guidance
-  customInstructions?: string; // Additional instructions
-  groups: GroupEntry[]; // Available tool groups
-  source?: "global" | "project"; // Configuration source
-}
-```
-
-### GroupEntry
-
-Tool group with optional configuration:
-
-```typescript
-type GroupEntry = ToolGroup | [ToolGroup, GroupOptions];
-
-interface GroupOptions {
-  fileRegex?: string; // File pattern restriction
-  description?: string; // Group description
 }
 ```
 
@@ -609,122 +428,97 @@ interface GroupOptions {
 ```typescript
 import { RooCodeAPI } from "@roo-code/types";
 
-// Start a new task
-const taskId = await api.startNewTask({
-  text: "Create a simple web server",
-  configuration: {
-    apiProvider: "anthropic",
-    apiModelId: "claude-3-5-sonnet-20241022",
-  },
-});
+async function createAndMonitorTask(api: RooCodeAPI) {
+  // Listen for events
+  api.on("taskCreated", (taskId) => {
+    console.log(`Task ${taskId} created`);
+  });
 
-// Listen for task events
-api.on("taskCompleted", (taskId, tokenUsage, toolUsage) => {
-  console.log(`Task ${taskId} completed`);
-  console.log(
-    `Tokens used: ${tokenUsage.totalTokensIn + tokenUsage.totalTokensOut}`,
-  );
-  console.log(`Cost: $${tokenUsage.totalCost}`);
-});
+  api.on("taskCompleted", (taskId, tokenUsage, toolUsage) => {
+    console.log(`Task ${taskId} completed:`, {
+      tokens: tokenUsage.totalTokensIn + tokenUsage.totalTokensOut,
+      cost: tokenUsage.totalCost,
+      tools: Object.keys(toolUsage),
+    });
+  });
 
-// Send additional messages
-await api.sendMessage("Make it use Express.js");
+  // Start new task
+  const taskId = await api.startNewTask({
+    text: "Analyze this codebase and suggest improvements",
+    configuration: {
+      mode: "architect",
+      alwaysAllowReadOnly: true,
+    },
+  });
 
-// Cancel if needed
-await api.cancelCurrentTask();
-```
-
-### Profile Management
-
-```typescript
-// Create a new provider profile
-const profileId = await api.createProfile("Production", {
-  apiProvider: "openai",
-  apiModelId: "gpt-4",
-  modelTemperature: 0.1,
-  rateLimitSeconds: 2,
-});
-
-// Switch to the profile
-await api.setActiveProfile("Production");
-
-// Get all available profiles
-const profiles = api.getProfiles();
-console.log("Available profiles:", profiles);
-```
-
-### Event Monitoring
-
-```typescript
-// Monitor all task events
-api.on("taskCreated", (taskId) => {
-  console.log(`New task created: ${taskId}`);
-});
-
-api.on("taskStarted", (taskId) => {
-  console.log(`Task started: ${taskId}`);
-});
-
-api.on("message", ({ taskId, action, message }) => {
-  if (message.type === "ask") {
-    console.log(`Task ${taskId} is asking: ${message.text}`);
-  }
-});
-
-api.on("taskToolFailed", (taskId, toolName, error) => {
-  console.error(`Tool ${toolName} failed in task ${taskId}: ${error}`);
-});
+  return taskId;
+}
 ```
 
 ### Configuration Management
 
 ```typescript
-// Get current settings
-const config = api.getConfiguration();
+async function setupConfiguration(api: RooCodeAPI) {
+  // Get current config
+  const currentConfig = api.getConfiguration();
 
-// Update specific settings
-await api.setConfiguration({
-  ...config,
-  autoApprovalEnabled: true,
-  alwaysAllowReadOnly: true,
-  maxConcurrentFileReads: 50,
-});
+  // Update specific settings
+  await api.setConfiguration({
+    ...currentConfig,
+    autoApprovalEnabled: true,
+    alwaysAllowReadOnly: true,
+    maxConcurrentFileReads: 50,
+    mode: "code",
+  });
 
-// Check if API is ready
-if (api.isReady()) {
-  console.log("API is ready for use");
+  // Create development profile
+  await api.createProfile("dev-fast", {
+    apiProvider: "openrouter",
+    openRouterModelId: "anthropic/claude-3-haiku",
+    rateLimitSeconds: 0,
+  });
 }
 ```
 
-### IPC Server Usage
+### Error Handling
 
 ```typescript
-import { RooCodeIpcServer } from "@roo-code/types";
+async function robustTaskCreation(api: RooCodeAPI) {
+  try {
+    if (!api.isReady()) {
+      throw new Error("API not ready");
+    }
 
-// Start IPC server
-server.listen();
+    const taskId = await api.startNewTask({
+      text: "Help with debugging",
+      configuration: { mode: "debug" },
+    });
 
-// Handle client connections
-server.on("Connect", (clientId) => {
-  console.log(`Client connected: ${clientId}`);
-});
+    // Wait for task completion
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error("Task timeout"));
+      }, 300000); // 5 minute timeout
 
-// Handle task commands from clients
-server.on("TaskCommand", (clientId, command) => {
-  if (command.commandName === "StartNewTask") {
-    console.log(`Client ${clientId} starting task:`, command.data.text);
+      api.once("taskCompleted", (completedTaskId) => {
+        if (completedTaskId === taskId) {
+          clearTimeout(timeout);
+          resolve(taskId);
+        }
+      });
+
+      api.once("taskAborted", (abortedTaskId) => {
+        if (abortedTaskId === taskId) {
+          clearTimeout(timeout);
+          reject(new Error("Task aborted"));
+        }
+      });
+    });
+  } catch (error) {
+    console.error("Task creation failed:", error);
+    throw error;
   }
-});
-
-// Broadcast events to all clients
-server.broadcast({
-  type: "TaskEvent",
-  origin: "server",
-  data: {
-    eventName: "TaskCompleted",
-    payload: [taskId, tokenUsage, toolUsage],
-  },
-});
+}
 ```
 
 ---
@@ -744,14 +538,3 @@ const message = clineMessageSchema.parse(messageData);
 ```
 
 This ensures type safety both at compile time (TypeScript) and runtime (Zod validation).
-
----
-
-## Related Documentation
-
-- **Tool Usage**: See individual tool documentation for specific parameters and examples
-- **Provider Setup**: Refer to provider-specific configuration guides
-- **Mode Development**: Check mode creation documentation for custom AI assistants
-- **Extension API**: See VS Code extension API for additional integration options
-
-For more detailed information about specific interfaces or types, refer to the source files in [`packages/types/src/`](packages/types/src/).

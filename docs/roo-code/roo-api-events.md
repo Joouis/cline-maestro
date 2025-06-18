@@ -1,42 +1,38 @@
-# RooCode API Event System
+# Roo Code API Events
 
-Comprehensive documentation for the RooCode API event system, covering all events, their payloads, and usage patterns.
+The Roo Code API uses an event-driven architecture to provide real-time updates about task execution, messaging, and system state changes. This document covers all available events and their usage patterns.
 
 ## Table of Contents
 
-1. [Overview](#overview)
-2. [Event Interface](#event-interface)
-3. [Task Lifecycle Events](#task-lifecycle-events)
-4. [Message Events](#message-events)
-5. [Token Usage Events](#token-usage-events)
-6. [Tool Events](#tool-events)
-7. [IPC Events](#ipc-events)
-8. [Event Patterns](#event-patterns)
-9. [Usage Examples](#usage-examples)
+1. [Event System Overview](#event-system-overview)
+2. [RooCodeAPIEvents Interface](#roocodeapievents-interface)
+3. [Event Types & Payloads](#event-types--payloads)
+4. [Event Lifecycle](#event-lifecycle)
+5. [Usage Patterns](#usage-patterns)
+6. [Error Handling](#error-handling)
 
 ---
 
-## Overview
+## Event System Overview
 
-The RooCode API uses an event-driven architecture to provide real-time notifications about task lifecycle, system state changes, and user interactions. The event system is built on Node.js EventEmitter and provides strongly typed event definitions.
+The Roo Code API extends Node.js EventEmitter to provide a reactive interface for monitoring task execution and system state. All events are strongly typed with TypeScript for compile-time safety.
 
-### Key Benefits
+### Key Concepts
 
-- **Real-time Monitoring**: Track task progress and system state in real-time
-- **Loose Coupling**: Decouple application logic from RooCode internals
-- **Extensibility**: Easy to add new event handlers for custom functionality
-- **Type Safety**: Strongly typed event payloads with TypeScript support
+- **Event-driven**: Operations emit events rather than requiring polling
+- **Type-safe**: All events and payloads are fully typed
+- **Real-time**: Events are emitted immediately when state changes occur
+- **Hierarchical**: Events flow from tasks to the main API interface
 
 ---
 
-## Event Interface
+## RooCodeAPIEvents Interface
 
-### RooCodeAPIEvents
-
-The main event interface defining all available events and their payload types:
+The main event interface defines all events that can be emitted by the Roo Code API:
 
 ```typescript
 interface RooCodeAPIEvents {
+  // Messaging Events
   message: [
     data: {
       taskId: string;
@@ -44,6 +40,8 @@ interface RooCodeAPIEvents {
       message: ClineMessage;
     },
   ];
+
+  // Task Lifecycle Events
   taskCreated: [taskId: string];
   taskStarted: [taskId: string];
   taskModeSwitched: [taskId: string, mode: string];
@@ -53,812 +51,639 @@ interface RooCodeAPIEvents {
   taskAborted: [taskId: string];
   taskSpawned: [parentTaskId: string, childTaskId: string];
   taskCompleted: [taskId: string, tokenUsage: TokenUsage, toolUsage: ToolUsage];
+
+  // Progress & Status Events
   taskTokenUsageUpdated: [taskId: string, tokenUsage: TokenUsage];
   taskToolFailed: [taskId: string, toolName: ToolName, error: string];
 }
 ```
 
-### Event Usage Pattern
-
-```typescript
-import { RooCodeAPI } from "@roo-code/types";
-
-const api: RooCodeAPI = getRooCodeAPI();
-
-// Type-safe event handlers
-api.on("taskCompleted", (taskId, tokenUsage, toolUsage) => {
-  // Handler receives strongly typed parameters
-  console.log(`Task ${taskId} completed with cost $${tokenUsage.totalCost}`);
-});
-```
-
 ---
 
-## Task Lifecycle Events
+## Event Types & Payloads
 
-### taskCreated
+### Messaging Events
 
-Fired when a new task is created but before execution begins.
+#### `message`
 
-**Payload**: `[taskId: string]`
+Emitted when a new message is created or an existing message is updated.
 
-```typescript
-api.on("taskCreated", (taskId) => {
-  console.log(`New task created: ${taskId}`);
-  // Initialize task tracking, UI updates, etc.
-});
-```
-
-**Use Cases**:
-
-- Initialize task tracking data
-- Update UI to show new task
-- Set up task-specific logging
-- Notify external systems
-
-### taskStarted
-
-Fired when a task begins execution (after any initial setup).
-
-**Payload**: `[taskId: string]`
+**Payload:**
 
 ```typescript
-api.on("taskStarted", (taskId) => {
-  console.log(`Task execution started: ${taskId}`);
-  startTaskTimer(taskId);
-});
+{
+  taskId: string; // Task that generated the message
+  action: "created" | "updated"; // Whether message is new or updated
+  message: ClineMessage; // Complete message object
+}
 ```
 
-**Use Cases**:
-
-- Start performance timers
-- Begin resource monitoring
-- Update task status indicators
-- Log task start time
-
-### taskModeSwitched
-
-Fired when a task switches to a different AI mode.
-
-**Payload**: `[taskId: string, mode: string]`
+**ClineMessage Structure:**
 
 ```typescript
-api.on("taskModeSwitched", (taskId, mode) => {
-  console.log(`Task ${taskId} switched to mode: ${mode}`);
-  updateUIMode(mode);
-});
+interface ClineMessage {
+  ts: number; // Timestamp (milliseconds)
+  type: "ask" | "say"; // Message type
+  ask?: ClineAsk; // Ask type (if applicable)
+  say?: ClineSay; // Say type (if applicable)
+  text?: string; // Message content - can be plain text or JSON string
+  images?: string[]; // Base64 image data URIs
+  partial?: boolean; // Whether message is being streamed
+  reasoning?: string; // AI reasoning (if available)
+  conversationHistoryIndex?: number; // Position in conversation
+  checkpoint?: Record<string, unknown>; // Checkpoint data
+  progressStatus?: ToolProgressStatus; // Tool execution progress
+  contextCondense?: ContextCondense; // Context condensation info
+  isProtected?: boolean; // Whether message is protected from deletion
+}
 ```
 
-**Use Cases**:
+**Note:** For comprehensive documentation of all possible JSON structures that can appear in the `text` field, see the [Data types of `message.text`](roo-api-tools.md#data-types-of-messagetext) section in the Tools documentation.
 
-- Update UI to reflect new mode
-- Log mode changes
-- Adjust tool availability
-- Notify mode-specific handlers
-
-### taskPaused
-
-Fired when task execution is paused (waiting for user input).
-
-**Payload**: `[taskId: string]`
+#### ClineAsk Types (User Input Requests)
 
 ```typescript
-api.on("taskPaused", (taskId) => {
-  console.log(`Task paused: ${taskId}`);
-  showUserInteractionRequired(taskId);
-});
+type ClineAsk =
+  | "followup" // Clarifying questions
+  | "command" // Command execution permission
+  | "command_output" // Command output access permission
+  | "completion_result" // Task completion approval
+  | "tool" // Tool usage permission
+  | "api_req_failed" // API retry confirmation
+  | "resume_task" // Task resumption confirmation
+  | "resume_completed_task" // Completed task resumption
+  | "mistake_limit_reached" // Error handling guidance
+  | "browser_action_launch" // Browser interaction permission
+  | "use_mcp_server" // MCP server usage permission
+  | "auto_approval_max_req_reached"; // Manual approval after auto-limit
 ```
 
-**Use Cases**:
-
-- Show user interaction required indicators
-- Pause resource monitoring
-- Update task status
-- Trigger notifications
-
-### taskUnpaused
-
-Fired when task execution resumes after being paused.
-
-**Payload**: `[taskId: string]`
+#### ClineSay Types (Informational Messages)
 
 ```typescript
-api.on("taskUnpaused", (taskId) => {
-  console.log(`Task resumed: ${taskId}`);
-  hideUserInteractionRequired(taskId);
-});
+type ClineSay =
+  | "error" // Error messages
+  | "api_req_started" // API request initiated
+  | "api_req_finished" // API request completed
+  | "api_req_retried" // API request retried
+  | "api_req_retry_delayed" // API retry delayed
+  | "api_req_deleted" // API request cancelled
+  | "text" // General text messages
+  | "reasoning" // AI reasoning process
+  | "completion_result" // Task completion results
+  | "user_feedback" // User feedback messages
+  | "user_feedback_diff" // Diff-formatted feedback
+  | "command_output" // Command execution output
+  | "shell_integration_warning" // Shell integration issues
+  | "browser_action" // Browser action descriptions
+  | "browser_action_result" // Browser action results
+  | "mcp_server_request_started" // MCP request initiated
+  | "mcp_server_response" // MCP response received
+  | "subtask_result" // Subtask completion results
+  | "checkpoint_saved" // Checkpoint save notifications
+  | "rooignore_error" // .rooignore processing errors
+  | "diff_error" // Diff application errors
+  | "condense_context" // Context condensation started
+  | "condense_context_error" // Context condensation errors
+  | "codebase_search_result"; // Codebase search results
 ```
 
-**Use Cases**:
-
-- Hide user interaction indicators
-- Resume resource monitoring
-- Update task status
-- Log resume time
-
-### taskAskResponded
-
-Fired when user responds to a task's question or request.
-
-**Payload**: `[taskId: string]`
-
-```typescript
-api.on("taskAskResponded", (taskId) => {
-  console.log(`User responded to task: ${taskId}`);
-  logUserInteraction(taskId);
-});
-```
-
-**Use Cases**:
-
-- Log user interactions
-- Update task progress indicators
-- Trigger follow-up actions
-- Analytics tracking
-
-### taskAborted
-
-Fired when a task is cancelled or aborted.
-
-**Payload**: `[taskId: string]`
-
-```typescript
-api.on("taskAborted", (taskId) => {
-  console.log(`Task aborted: ${taskId}`);
-  cleanupTaskResources(taskId);
-});
-```
-
-**Use Cases**:
-
-- Clean up task resources
-- Update UI status
-- Log abort reason
-- Cancel related operations
-
-### taskSpawned
-
-Fired when a task creates a subtask.
-
-**Payload**: `[parentTaskId: string, childTaskId: string]`
-
-```typescript
-api.on("taskSpawned", (parentTaskId, childTaskId) => {
-  console.log(`Task ${parentTaskId} spawned subtask: ${childTaskId}`);
-  linkTaskHierarchy(parentTaskId, childTaskId);
-});
-```
-
-**Use Cases**:
-
-- Track task hierarchies
-- Update UI to show subtasks
-- Manage resource allocation
-- Log task relationships
-
-### taskCompleted
-
-Fired when a task finishes execution with final usage statistics.
-
-**Payload**: `[taskId: string, tokenUsage: TokenUsage, toolUsage: ToolUsage]`
-
-```typescript
-api.on("taskCompleted", (taskId, tokenUsage, toolUsage) => {
-  console.log(`Task completed: ${taskId}`);
-  console.log(`Total cost: $${tokenUsage.totalCost}`);
-  console.log(`Tools used: ${Object.keys(toolUsage).length}`);
-
-  // Store completion metrics
-  saveTaskMetrics(taskId, {
-    tokenUsage,
-    toolUsage,
-    completedAt: new Date(),
-  });
-});
-```
-
-**Use Cases**:
-
-- Store final metrics
-- Calculate costs
-- Update completion statistics
-- Generate reports
-
----
-
-## Message Events
-
-### message
-
-Fired when messages are created or updated in the conversation.
-
-**Payload**: `[data: { taskId: string; action: "created" | "updated"; message: ClineMessage }]`
+**Example:**
 
 ```typescript
 api.on("message", ({ taskId, action, message }) => {
   if (action === "created") {
     console.log(`New message in task ${taskId}:`, message.text);
   } else {
-    console.log(`Updated message in task ${taskId}`);
-  }
-
-  // Handle different message types
-  if (message.type === "ask") {
-    handleUserPrompt(taskId, message);
-  } else if (message.type === "say") {
-    handleAIResponse(taskId, message);
+    console.log(`Message updated in task ${taskId}`);
   }
 });
 ```
 
-**Message Types**:
+### Task Lifecycle Events
 
-**Ask Messages** (`message.type === 'ask'`):
+#### `taskCreated`
 
-- User input required
-- `message.ask` contains the ask type
-- Common ask types: `followup`, `command`, `tool`, `completion_result`
+Emitted immediately when a new task is created.
 
-**Say Messages** (`message.type === 'say'`):
+**Payload:** `[taskId: string]`
 
-- AI responses and system messages
-- `message.say` contains the say type
-- Common say types: `text`, `command_output`, `api_req_started`, `error`
+#### `taskStarted`
 
-**Use Cases**:
+Emitted when a task begins execution (after creation and initialization).
 
-- Update conversation UI
-- Log conversation history
-- Trigger custom message handlers
-- Parse tool usage and commands
+**Payload:** `[taskId: string]`
 
----
+#### `taskModeSwitched`
 
-## Token Usage Events
+Emitted when a task switches to a different mode (e.g., from 'code' to 'debug').
 
-### taskTokenUsageUpdated
+**Payload:** `[taskId: string, mode: string]`
 
-Fired when token usage statistics are updated during task execution.
+#### `taskPaused`
 
-**Payload**: `[taskId: string, tokenUsage: TokenUsage]`
+Emitted when a task is paused and waiting for user input.
 
-```typescript
-api.on("taskTokenUsageUpdated", (taskId, tokenUsage) => {
-  console.log(`Token usage updated for task ${taskId}:`);
-  console.log(`Input tokens: ${tokenUsage.totalTokensIn}`);
-  console.log(`Output tokens: ${tokenUsage.totalTokensOut}`);
-  console.log(`Current cost: $${tokenUsage.totalCost}`);
+**Payload:** `[taskId: string]`
 
-  // Update real-time cost display
-  updateCostDisplay(taskId, tokenUsage.totalCost);
+#### `taskUnpaused`
 
-  // Check cost limits
-  if (tokenUsage.totalCost > MAX_TASK_COST) {
-    warnHighCost(taskId, tokenUsage.totalCost);
-  }
-});
-```
+Emitted when a paused task resumes execution.
 
-**TokenUsage Structure**:
+**Payload:** `[taskId: string]`
+
+#### `taskAskResponded`
+
+Emitted when the user responds to a task's request for input.
+
+**Payload:** `[taskId: string]`
+
+#### `taskAborted`
+
+Emitted when a task is forcefully terminated or cancelled.
+
+**Payload:** `[taskId: string]`
+
+#### `taskSpawned`
+
+Emitted when a task creates a subtask.
+
+**Payload:** `[parentTaskId: string, childTaskId: string]`
+
+#### `taskCompleted`
+
+Emitted when a task finishes execution successfully.
+
+**Payload:** `[taskId: string, tokenUsage: TokenUsage, toolUsage: ToolUsage]`
+
+**TokenUsage Structure:**
 
 ```typescript
 interface TokenUsage {
-  totalTokensIn: number; // Cumulative input tokens
-  totalTokensOut: number; // Cumulative output tokens
+  totalTokensIn: number; // Total input tokens consumed
+  totalTokensOut: number; // Total output tokens generated
   totalCacheWrites?: number; // Cache write operations
   totalCacheReads?: number; // Cache read operations
   totalCost: number; // Total cost in USD
-  contextTokens: number; // Context tokens in current request
+  contextTokens: number; // Tokens used for context
 }
 ```
 
-**Use Cases**:
-
-- Real-time cost monitoring
-- Usage analytics
-- Cost limit enforcement
-- Performance optimization
-- Billing integration
-
----
-
-## Tool Events
-
-### taskToolFailed
-
-Fired when a tool operation fails during task execution.
-
-**Payload**: `[taskId: string, toolName: ToolName, error: string]`
+**ToolUsage Structure:**
 
 ```typescript
-api.on("taskToolFailed", (taskId, toolName, error) => {
-  console.error(`Tool ${toolName} failed in task ${taskId}: ${error}`);
-
-  // Log tool failure for debugging
-  logToolFailure(taskId, toolName, error);
-
-  // Handle specific tool failures
-  switch (toolName) {
-    case "execute_command":
-      handleCommandFailure(taskId, error);
-      break;
-    case "read_file":
-      handleFileReadFailure(taskId, error);
-      break;
-    case "browser_action":
-      handleBrowserFailure(taskId, error);
-      break;
-    default:
-      handleGenericToolFailure(taskId, toolName, error);
+type ToolUsage = Record<
+  ToolName,
+  {
+    attempts: number; // Number of times tool was attempted
+    failures: number; // Number of failed attempts
   }
-});
+>;
 ```
 
-**Common Tool Failure Scenarios**:
+### Progress & Status Events
 
-- **File Operations**: Permission denied, file not found
-- **Command Execution**: Command not found, permission denied
-- **Browser Actions**: Browser not available, navigation timeout
-- **API Calls**: Network errors, authentication failures
-- **MCP Tools**: Server unavailable, tool not found
+#### `taskTokenUsageUpdated`
 
-**Use Cases**:
+Emitted periodically during task execution to report token consumption.
 
-- Error logging and debugging
-- Failure recovery mechanisms
-- User notification
-- Tool reliability monitoring
-- Performance analysis
+**Payload:** `[taskId: string, tokenUsage: TokenUsage]`
 
----
+#### `taskToolFailed`
 
-## IPC Events
+Emitted when a tool execution fails during task processing.
 
-### IpcServerEvents
+**Payload:** `[taskId: string, toolName: ToolName, error: string]`
 
-Events for the IPC server component:
+**Available Tool Names:**
 
 ```typescript
-interface IpcServerEvents {
-  Connect: [clientId: string];
-  Disconnect: [clientId: string];
-  TaskCommand: [clientId: string, data: TaskCommand];
-  TaskEvent: [relayClientId: string | undefined, data: TaskEvent];
-}
-```
-
-### IPC Event Examples
-
-```typescript
-// IPC Server event handling
-server.on("Connect", (clientId) => {
-  console.log(`IPC client connected: ${clientId}`);
-  connectedClients.add(clientId);
-});
-
-server.on("Disconnect", (clientId) => {
-  console.log(`IPC client disconnected: ${clientId}`);
-  connectedClients.delete(clientId);
-});
-
-server.on("TaskCommand", (clientId, command) => {
-  console.log(`Received command from ${clientId}:`, command.commandName);
-
-  switch (command.commandName) {
-    case "StartNewTask":
-      handleStartNewTask(clientId, command.data);
-      break;
-    case "CancelTask":
-      handleCancelTask(clientId, command.data);
-      break;
-    case "CloseTask":
-      handleCloseTask(clientId, command.data);
-      break;
-  }
-});
+type ToolName =
+  | "execute_command"
+  | "read_file"
+  | "write_to_file"
+  | "apply_diff"
+  | "insert_content"
+  | "search_and_replace"
+  | "search_files"
+  | "list_files"
+  | "list_code_definition_names"
+  | "browser_action"
+  | "use_mcp_tool"
+  | "access_mcp_resource"
+  | "ask_followup_question"
+  | "attempt_completion"
+  | "switch_mode"
+  | "new_task"
+  | "fetch_instructions"
+  | "codebase_search";
 ```
 
 ---
 
-## Event Patterns
+## Event Lifecycle
 
-### Event Ordering
+### Typical Task Event Flow
 
-Events follow a predictable lifecycle order:
+1. **Task Creation**
+
+   ```
+   taskCreated → taskStarted
+   ```
+
+2. **Task Execution**
+
+   ```
+   taskStarted → message(s) → taskTokenUsageUpdated → ...
+   ```
+
+3. **User Interaction** (if needed)
+
+   ```
+   message(ask) → taskPaused → taskAskResponded → taskUnpaused
+   ```
+
+4. **Task Completion**
+
+   ```
+   message(completion_result) → taskCompleted
+   ```
+
+5. **Task Abortion** (if cancelled)
+
+   ```
+   taskAborted
+   ```
+
+6. **Subtask Creation** (if applicable)
+   ```
+   taskSpawned → taskCreated (for child) → ...
+   ```
+
+### Mode Switching Flow
 
 ```
-1. taskCreated
-2. taskStarted
-3. message (initial task message)
-4. [task execution with various events]
-5. taskCompleted | taskAborted
+taskModeSwitched → message(mode switch explanation) → continued execution
 ```
 
-### Hierarchical Events
-
-For subtasks, events maintain parent-child relationships:
+### Error Flow
 
 ```
-1. taskSpawned (parent creates child)
-2. taskCreated (child task)
-3. taskStarted (child task)
-4. [child task execution]
-5. taskCompleted (child task)
-6. [parent task continues]
-```
-
-### Error Handling Pattern
-
-```typescript
-// Comprehensive error handling
-api.on("taskToolFailed", (taskId, toolName, error) => {
-  // Log the failure
-  logger.error("Tool failure", { taskId, toolName, error });
-
-  // Increment failure counter
-  incrementToolFailureCount(toolName);
-
-  // Notify monitoring systems
-  notifyMonitoring("tool_failure", { taskId, toolName, error });
-
-  // Attempt recovery if possible
-  if (isRecoverableError(error)) {
-    scheduleRetry(taskId, toolName);
-  }
-});
-```
-
-### State Synchronization
-
-```typescript
-// Maintain task state across events
-const taskStates = new Map<string, TaskState>();
-
-api.on("taskCreated", (taskId) => {
-  taskStates.set(taskId, {
-    status: "created",
-    createdAt: new Date(),
-    messages: [],
-    tokenUsage: null,
-  });
-});
-
-api.on("taskStarted", (taskId) => {
-  const state = taskStates.get(taskId);
-  if (state) {
-    state.status = "running";
-    state.startedAt = new Date();
-  }
-});
-
-api.on("message", ({ taskId, message }) => {
-  const state = taskStates.get(taskId);
-  if (state) {
-    state.messages.push(message);
-  }
-});
-
-api.on("taskCompleted", (taskId, tokenUsage) => {
-  const state = taskStates.get(taskId);
-  if (state) {
-    state.status = "completed";
-    state.completedAt = new Date();
-    state.tokenUsage = tokenUsage;
-  }
-});
+taskToolFailed → message(error) → taskPaused (for user decision)
 ```
 
 ---
 
-## Usage Examples
+## Usage Patterns
 
 ### Basic Event Monitoring
 
 ```typescript
 import { RooCodeAPI } from "@roo-code/types";
 
-class TaskMonitor {
-  private api: RooCodeAPI;
-  private activeTasks = new Set<string>();
+function setupEventListeners(api: RooCodeAPI) {
+  // Monitor task lifecycle
+  api.on("taskCreated", (taskId) => {
+    console.log(`✅ Task ${taskId} created`);
+  });
 
-  constructor(api: RooCodeAPI) {
-    this.api = api;
-    this.setupEventHandlers();
-  }
+  api.on("taskStarted", (taskId) => {
+    console.log(`🚀 Task ${taskId} started`);
+  });
 
-  private setupEventHandlers() {
-    // Task lifecycle
-    this.api.on("taskCreated", this.handleTaskCreated.bind(this));
-    this.api.on("taskStarted", this.handleTaskStarted.bind(this));
-    this.api.on("taskCompleted", this.handleTaskCompleted.bind(this));
-    this.api.on("taskAborted", this.handleTaskAborted.bind(this));
+  api.on("taskCompleted", (taskId, tokenUsage, toolUsage) => {
+    console.log(`✨ Task ${taskId} completed`, {
+      tokens: tokenUsage.totalTokensIn + tokenUsage.totalTokensOut,
+      cost: `$${tokenUsage.totalCost.toFixed(4)}`,
+      tools: Object.keys(toolUsage).length,
+    });
+  });
 
-    // Token monitoring
-    this.api.on("taskTokenUsageUpdated", this.handleTokenUpdate.bind(this));
-
-    // Error monitoring
-    this.api.on("taskToolFailed", this.handleToolFailure.bind(this));
-  }
-
-  private handleTaskCreated(taskId: string) {
-    this.activeTasks.add(taskId);
-    console.log(`📝 Task created: ${taskId}`);
-  }
-
-  private handleTaskStarted(taskId: string) {
-    console.log(`🚀 Task started: ${taskId}`);
-  }
-
-  private handleTaskCompleted(taskId: string, tokenUsage: TokenUsage) {
-    this.activeTasks.delete(taskId);
-    console.log(
-      `✅ Task completed: ${taskId} (Cost: $${tokenUsage.totalCost})`,
-    );
-  }
-
-  private handleTaskAborted(taskId: string) {
-    this.activeTasks.delete(taskId);
-    console.log(`❌ Task aborted: ${taskId}`);
-  }
-
-  private handleTokenUpdate(taskId: string, tokenUsage: TokenUsage) {
-    if (tokenUsage.totalCost > 1.0) {
-      console.warn(
-        `💰 High cost alert: Task ${taskId} cost $${tokenUsage.totalCost}`,
-      );
+  // Monitor messages
+  api.on("message", ({ taskId, action, message }) => {
+    if (message.type === "ask") {
+      console.log(`❓ Task ${taskId} needs input: ${message.text}`);
+    } else if (message.type === "say" && message.say === "completion_result") {
+      console.log(`📋 Task ${taskId} result: ${message.text}`);
     }
-  }
-
-  private handleToolFailure(taskId: string, toolName: string, error: string) {
-    console.error(`🔧 Tool failure: ${toolName} in task ${taskId} - ${error}`);
-  }
-
-  getActiveTaskCount(): number {
-    return this.activeTasks.size;
-  }
+  });
 }
-
-// Usage
-const monitor = new TaskMonitor(api);
 ```
 
-### Real-time Dashboard Integration
+### Task Progress Tracking
 
 ```typescript
-class RealTimeDashboard {
-  private api: RooCodeAPI;
-  private socket: WebSocket;
+class TaskTracker {
+  private tasks = new Map<string, TaskInfo>();
 
-  constructor(api: RooCodeAPI, dashboardUrl: string) {
-    this.api = api;
-    this.socket = new WebSocket(dashboardUrl);
-    this.setupEventForwarding();
+  constructor(private api: RooCodeAPI) {
+    this.setupListeners();
   }
 
-  private setupEventForwarding() {
-    // Forward all task events to dashboard
+  private setupListeners() {
     this.api.on("taskCreated", (taskId) => {
-      this.sendToDashboard("task_created", { taskId, timestamp: Date.now() });
+      this.tasks.set(taskId, {
+        id: taskId,
+        status: "created",
+        startTime: Date.now(),
+        tokenUsage: {
+          totalTokensIn: 0,
+          totalTokensOut: 0,
+          totalCost: 0,
+          contextTokens: 0,
+        },
+        toolUsage: {},
+        messages: [],
+      });
+    });
+
+    this.api.on("taskStarted", (taskId) => {
+      const task = this.tasks.get(taskId);
+      if (task) {
+        task.status = "running";
+        task.startTime = Date.now();
+      }
     });
 
     this.api.on("taskCompleted", (taskId, tokenUsage, toolUsage) => {
-      this.sendToDashboard("task_completed", {
-        taskId,
-        tokenUsage,
-        toolUsage,
-        timestamp: Date.now(),
-      });
+      const task = this.tasks.get(taskId);
+      if (task) {
+        task.status = "completed";
+        task.endTime = Date.now();
+        task.tokenUsage = tokenUsage;
+        task.toolUsage = toolUsage;
+      }
+    });
+
+    this.api.on("message", ({ taskId, message }) => {
+      const task = this.tasks.get(taskId);
+      if (task) {
+        task.messages.push(message);
+      }
     });
 
     this.api.on("taskTokenUsageUpdated", (taskId, tokenUsage) => {
-      this.sendToDashboard("token_usage_update", {
-        taskId,
-        cost: tokenUsage.totalCost,
-        tokens: tokenUsage.totalTokensIn + tokenUsage.totalTokensOut,
-        timestamp: Date.now(),
-      });
-    });
-
-    this.api.on("message", ({ taskId, action, message }) => {
-      if (message.type === "ask") {
-        this.sendToDashboard("user_input_required", {
-          taskId,
-          askType: message.ask,
-          text: message.text,
-          timestamp: Date.now(),
-        });
+      const task = this.tasks.get(taskId);
+      if (task) {
+        task.tokenUsage = tokenUsage;
       }
     });
   }
 
-  private sendToDashboard(eventType: string, data: any) {
-    if (this.socket.readyState === WebSocket.OPEN) {
-      this.socket.send(JSON.stringify({ eventType, data }));
-    }
+  getTaskInfo(taskId: string): TaskInfo | undefined {
+    return this.tasks.get(taskId);
+  }
+
+  getAllTasks(): TaskInfo[] {
+    return Array.from(this.tasks.values());
+  }
+
+  getRunningTasks(): TaskInfo[] {
+    return this.getAllTasks().filter((task) => task.status === "running");
+  }
+}
+
+interface TaskInfo {
+  id: string;
+  status: "created" | "running" | "paused" | "completed" | "aborted";
+  startTime: number;
+  endTime?: number;
+  tokenUsage: TokenUsage;
+  toolUsage: ToolUsage;
+  messages: ClineMessage[];
+}
+```
+
+### Real-time Cost Monitoring
+
+```typescript
+class CostMonitor {
+  private totalCost = 0;
+  private taskCosts = new Map<string, number>();
+
+  constructor(private api: RooCodeAPI) {
+    this.setupListeners();
+  }
+
+  private setupListeners() {
+    this.api.on("taskTokenUsageUpdated", (taskId, tokenUsage) => {
+      const previousCost = this.taskCosts.get(taskId) || 0;
+      const newCost = tokenUsage.totalCost;
+      const costIncrease = newCost - previousCost;
+
+      this.taskCosts.set(taskId, newCost);
+      this.totalCost += costIncrease;
+
+      // Alert if cost threshold exceeded
+      if (this.totalCost > 10.0) {
+        // $10 threshold
+        console.warn(
+          `💰 Cost alert: Total spent $${this.totalCost.toFixed(2)}`,
+        );
+      }
+    });
+
+    this.api.on("taskCompleted", (taskId, tokenUsage) => {
+      const finalCost = tokenUsage.totalCost;
+      console.log(`💰 Task ${taskId} final cost: $${finalCost.toFixed(4)}`);
+    });
+  }
+
+  getTotalCost(): number {
+    return this.totalCost;
+  }
+
+  getTaskCost(taskId: string): number {
+    return this.taskCosts.get(taskId) || 0;
+  }
+
+  reset(): void {
+    this.totalCost = 0;
+    this.taskCosts.clear();
   }
 }
 ```
 
-### Analytics and Reporting
+### Automatic Task Management
 
 ```typescript
-class TaskAnalytics {
-  private api: RooCodeAPI;
-  private taskMetrics = new Map<string, TaskMetrics>();
+class AutoTaskManager {
+  private maxConcurrentTasks = 3;
+  private activeTasks = new Set<string>();
+  private taskQueue: Array<() => Promise<string>> = [];
 
-  constructor(api: RooCodeAPI) {
-    this.api = api;
-    this.setupAnalytics();
+  constructor(private api: RooCodeAPI) {
+    this.setupListeners();
   }
 
-  private setupAnalytics() {
-    this.api.on("taskCreated", (taskId) => {
-      this.taskMetrics.set(taskId, {
-        taskId,
-        createdAt: Date.now(),
-        toolUsageCount: {},
-        messageCount: 0,
-        errorCount: 0,
-      });
+  private setupListeners() {
+    this.api.on("taskStarted", (taskId) => {
+      this.activeTasks.add(taskId);
     });
 
-    this.api.on("message", ({ taskId }) => {
-      const metrics = this.taskMetrics.get(taskId);
-      if (metrics) {
-        metrics.messageCount++;
-      }
+    this.api.on("taskCompleted", (taskId) => {
+      this.activeTasks.delete(taskId);
+      this.processQueue();
     });
 
-    this.api.on("taskToolFailed", (taskId, toolName) => {
-      const metrics = this.taskMetrics.get(taskId);
-      if (metrics) {
-        metrics.errorCount++;
-        metrics.toolUsageCount[toolName] =
-          (metrics.toolUsageCount[toolName] || 0) + 1;
-      }
+    this.api.on("taskAborted", (taskId) => {
+      this.activeTasks.delete(taskId);
+      this.processQueue();
     });
 
-    this.api.on("taskCompleted", (taskId, tokenUsage, toolUsage) => {
-      const metrics = this.taskMetrics.get(taskId);
-      if (metrics) {
-        metrics.completedAt = Date.now();
-        metrics.duration = metrics.completedAt - metrics.createdAt;
-        metrics.finalTokenUsage = tokenUsage;
-        metrics.finalToolUsage = toolUsage;
-
-        // Save to analytics database
-        this.saveMetrics(metrics);
+    // Auto-approve certain operations
+    this.api.on("message", ({ taskId, message }) => {
+      if (message.type === "ask" && message.ask === "tool") {
+        // Auto-approve read-only operations
+        if (this.isReadOnlyTool(message.text)) {
+          this.api.pressPrimaryButton();
+        }
       }
     });
   }
 
-  private saveMetrics(metrics: TaskMetrics) {
-    // Implementation for saving to your analytics system
-    console.log("Saving task metrics:", metrics);
-  }
-
-  generateReport(startDate: Date, endDate: Date) {
-    // Generate analytics report for date range
-    const tasks = Array.from(this.taskMetrics.values()).filter(
-      (task) =>
-        task.createdAt >= startDate.getTime() &&
-        task.createdAt <= endDate.getTime(),
-    );
-
-    return {
-      totalTasks: tasks.length,
-      completedTasks: tasks.filter((t) => t.completedAt).length,
-      totalCost: tasks.reduce(
-        (sum, t) => sum + (t.finalTokenUsage?.totalCost || 0),
-        0,
-      ),
-      averageDuration:
-        tasks.reduce((sum, t) => sum + (t.duration || 0), 0) / tasks.length,
-      topTools: this.getTopTools(tasks),
-      errorRate: tasks.reduce((sum, t) => sum + t.errorCount, 0) / tasks.length,
-    };
-  }
-
-  private getTopTools(tasks: TaskMetrics[]) {
-    const toolCounts = new Map<string, number>();
-
-    tasks.forEach((task) => {
-      if (task.finalToolUsage) {
-        Object.entries(task.finalToolUsage).forEach(([tool, usage]) => {
-          toolCounts.set(tool, (toolCounts.get(tool) || 0) + usage.attempts);
+  async queueTask(taskFactory: () => Promise<string>): Promise<string> {
+    if (this.activeTasks.size < this.maxConcurrentTasks) {
+      return await taskFactory();
+    } else {
+      return new Promise((resolve, reject) => {
+        this.taskQueue.push(async () => {
+          try {
+            const taskId = await taskFactory();
+            resolve(taskId);
+            return taskId;
+          } catch (error) {
+            reject(error);
+            throw error;
+          }
         });
-      }
-    });
-
-    return Array.from(toolCounts.entries())
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 10);
+      });
+    }
   }
-}
 
-interface TaskMetrics {
-  taskId: string;
-  createdAt: number;
-  completedAt?: number;
-  duration?: number;
-  messageCount: number;
-  errorCount: number;
-  toolUsageCount: Record<string, number>;
-  finalTokenUsage?: TokenUsage;
-  finalToolUsage?: ToolUsage;
+  private async processQueue(): Promise<void> {
+    while (
+      this.taskQueue.length > 0 &&
+      this.activeTasks.size < this.maxConcurrentTasks
+    ) {
+      const taskFactory = this.taskQueue.shift();
+      if (taskFactory) {
+        try {
+          await taskFactory();
+        } catch (error) {
+          console.error("Queued task failed:", error);
+        }
+      }
+    }
+  }
+
+  private isReadOnlyTool(text: string | undefined): boolean {
+    if (!text) return false;
+    return (
+      text.includes("read_file") ||
+      text.includes("list_files") ||
+      text.includes("search_files")
+    );
+  }
 }
 ```
 
 ---
 
-## Best Practices
+## Error Handling
 
-### Event Handler Registration
-
-```typescript
-// ✅ Good: Register handlers early
-class MyApp {
-  constructor(api: RooCodeAPI) {
-    this.setupEventHandlers(api);
-  }
-
-  private setupEventHandlers(api: RooCodeAPI) {
-    // Register all handlers before starting tasks
-    api.on("taskCreated", this.handleTaskCreated);
-    api.on("taskCompleted", this.handleTaskCompleted);
-  }
-}
-
-// ❌ Bad: Late registration might miss events
-setTimeout(() => {
-  api.on("taskCreated", handler); // Might miss early events
-}, 1000);
-```
-
-### Error Handling
+### Tool Failure Handling
 
 ```typescript
-// ✅ Good: Wrap handlers in try-catch
-api.on("taskCompleted", (taskId, tokenUsage, toolUsage) => {
-  try {
-    processTaskCompletion(taskId, tokenUsage, toolUsage);
-  } catch (error) {
-    console.error("Error processing task completion:", error);
-  }
-});
+api.on("taskToolFailed", (taskId, toolName, error) => {
+  console.error(`🔧 Tool ${toolName} failed in task ${taskId}:`, error);
 
-// ✅ Good: Handle async errors
-api.on("taskCompleted", async (taskId, tokenUsage, toolUsage) => {
-  try {
-    await saveTaskResults(taskId, tokenUsage, toolUsage);
-  } catch (error) {
-    console.error("Error saving task results:", error);
+  // Handle specific tool failures
+  switch (toolName) {
+    case "execute_command":
+      console.log("Command execution failed - may need to check permissions");
+      break;
+    case "write_to_file":
+      console.log("File write failed - may need to check file permissions");
+      break;
+    case "browser_action":
+      console.log("Browser action failed - may need to check browser setup");
+      break;
+    default:
+      console.log(`Unknown tool failure: ${toolName}`);
   }
 });
 ```
 
-### Memory Management
+### Task Error Recovery
 
 ```typescript
-// ✅ Good: Clean up when done
-class TaskTracker {
-  private taskData = new Map();
+class TaskErrorRecovery {
+  private retryCount = new Map<string, number>();
+  private maxRetries = 3;
 
-  constructor(api: RooCodeAPI) {
-    api.on("taskCompleted", (taskId) => {
-      // Process final data
-      this.processFinalData(taskId);
+  constructor(private api: RooCodeAPI) {
+    this.setupListeners();
+  }
 
-      // Clean up to prevent memory leaks
-      this.taskData.delete(taskId);
+  private setupListeners() {
+    this.api.on("taskToolFailed", async (taskId, toolName, error) => {
+      const retries = this.retryCount.get(taskId) || 0;
+
+      if (retries < this.maxRetries) {
+        this.retryCount.set(taskId, retries + 1);
+        console.log(
+          `Retrying task ${taskId} (attempt ${retries + 1}/${this.maxRetries})`,
+        );
+
+        // Send retry message
+        await this.api.sendMessage(
+          `The ${toolName} tool failed with error: ${error}. Please try again.`,
+        );
+      } else {
+        console.error(`Task ${taskId} exceeded max retries, aborting`);
+        await this.api.cancelCurrentTask();
+      }
     });
 
-    api.on("taskAborted", (taskId) => {
-      // Clean up aborted tasks too
-      this.taskData.delete(taskId);
+    this.api.on("taskCompleted", (taskId) => {
+      this.retryCount.delete(taskId);
+    });
+
+    this.api.on("taskAborted", (taskId) => {
+      this.retryCount.delete(taskId);
     });
   }
 }
 ```
 
-This comprehensive event documentation provides developers with all the information needed to effectively use the RooCode API event system for monitoring, analytics, and integration purposes.
+### Event Error Handling
+
+```typescript
+function setupRobustEventHandling(api: RooCodeAPI) {
+  // Wrap all event handlers in try-catch
+  const safeOn = <K extends keyof RooCodeAPIEvents>(
+    event: K,
+    handler: (...args: RooCodeAPIEvents[K]) => void | Promise<void>,
+  ) => {
+    api.on(event, async (...args) => {
+      try {
+        await handler(...args);
+      } catch (error) {
+        console.error(`Error in ${event} handler:`, error);
+      }
+    });
+  };
+
+  // Use safe handlers
+  safeOn("taskCreated", (taskId) => {
+    // Handler implementation
+  });
+
+  safeOn("message", ({ taskId, action, message }) => {
+    // Handler implementation
+  });
+}
+```
+
+This event system provides comprehensive monitoring and control over Roo Code task execution, enabling sophisticated automation and user experience enhancements.
