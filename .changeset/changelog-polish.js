@@ -16,6 +16,6 @@ text = text.replace(
 );
 
 // 3. Remove blank lines between bullet points to prevent spacing between sections
-text = text.replace(/^- .+\n\n- /gm, (match) => match.replace("\n\n", "\n"));
+text = text.replace(/^- .+(?:\n+)- /gm, (match) => match.replace(/\n+/g, "\n"));
 
 fs.writeFileSync(path, text, "utf8");
