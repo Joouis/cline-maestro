@@ -3,7 +3,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { v4 as uuidv4 } from "uuid";
 import { logger } from "../../utils/logger";
 import { ExtensionController, ExtensionType } from "../../core/controller";
-import { MessageRequest, ActionRequest, TaskHistoryResponse } from "../types";
+import { MessageRequest, ActionRequest } from "../types";
 
 export enum SSEEventType {
   STREAM_CLOSED = "stream_closed",
@@ -217,11 +217,11 @@ export async function registerRooRoutes(
           },
           400: {
             description: "Bad request - invalid input",
-            ...{ $ref: "ErrorResponse#" },
+            $ref: "ErrorResponse#",
           },
           500: {
             description: "Internal server error",
-            ...{ $ref: "ErrorResponse#" },
+            $ref: "ErrorResponse#",
           },
         },
       },
@@ -233,14 +233,12 @@ export async function registerRooRoutes(
 
         if (!text || text.trim() === "") {
           return reply.status(400).send({
-            status: "failed",
             message: "Task query is required",
           });
         }
 
         if (!controller.isExtensionAvailable(ExtensionType.ROO_CODE)) {
           return reply.status(500).send({
-            status: "failed",
             message: "RooCode extension is not available",
           });
         }
@@ -285,7 +283,6 @@ export async function registerRooRoutes(
       } catch (error) {
         logger.error("Error processing RooCode task request:", error);
         return reply.status(500).send({
-          status: "failed",
           message:
             error instanceof Error ? error.message : "Unknown error occurred",
         });
@@ -328,15 +325,15 @@ export async function registerRooRoutes(
           },
           400: {
             description: "Bad request - invalid input",
-            ...{ $ref: "ErrorResponse#" },
+            $ref: "ErrorResponse#",
           },
           404: {
             description: "Task not found",
-            ...{ $ref: "ErrorResponse#" },
+            $ref: "ErrorResponse#",
           },
           500: {
             description: "Internal server error",
-            ...{ $ref: "ErrorResponse#" },
+            $ref: "ErrorResponse#",
           },
         },
       },
@@ -348,14 +345,12 @@ export async function registerRooRoutes(
 
         if (!text || text.trim() === "") {
           return reply.status(400).send({
-            status: "failed",
             message: "Message text is required",
           });
         }
 
         if (!controller.isExtensionAvailable(ExtensionType.ROO_CODE)) {
           return reply.status(500).send({
-            status: "failed",
             message: "RooCode extension is not available",
           });
         }
@@ -367,7 +362,6 @@ export async function registerRooRoutes(
 
         if (!activeTaskIds.includes(taskId) && !isTaskInHistory) {
           return reply.status(404).send({
-            status: "failed",
             message: `Task with ID ${taskId} not found`,
           });
         }
@@ -415,7 +409,6 @@ export async function registerRooRoutes(
       } catch (error) {
         logger.error("Error processing RooCode task message request:", error);
         return reply.status(500).send({
-          status: "failed",
           message:
             error instanceof Error ? error.message : "Unknown error occurred",
         });
@@ -447,7 +440,12 @@ export async function registerRooRoutes(
           properties: {
             action: {
               type: "string",
-              enum: ["pressPrimaryButton", "pressSecondaryButton"],
+              enum: [
+                "pressPrimaryButton",
+                "pressSecondaryButton",
+                "cancel",
+                "resume",
+              ],
               description: "The action to perform on the task",
             },
           },
@@ -456,26 +454,32 @@ export async function registerRooRoutes(
         response: {
           200: {
             description: "Action performed successfully",
+            $ref: "TaskResponse#",
           },
           400: {
-            description: "Bad request - invalid input",
+            description: "Bad request - invalid input or action not allowed",
+            $ref: "ErrorResponse#",
           },
           404: {
             description: "Task not found",
+            $ref: "ErrorResponse#",
           },
           500: {
             description: "Internal server error",
+            $ref: "ErrorResponse#",
           },
         },
       },
     },
     async (request, reply) => {
-      try {
-        const { taskId } = request.params as { taskId: string };
-        const { action } = request.body as ActionRequest;
+      const { taskId } = request.params as { taskId: string };
+      const { action } = request.body as ActionRequest;
 
+      try {
         if (!controller.isExtensionAvailable(ExtensionType.ROO_CODE)) {
-          return reply.status(500).send();
+          return reply.status(500).send({
+            message: "RooCode extension is not available",
+          });
         }
 
         // Check if task exists in active tasks or history
@@ -484,7 +488,9 @@ export async function registerRooRoutes(
           await controller.rooCodeAdapter.isTaskInHistory(taskId);
 
         if (!activeTaskIds.includes(taskId) && !isTaskInHistory) {
-          return reply.status(404).send();
+          return reply.status(404).send({
+            message: `Task with ID ${taskId} not found`,
+          });
         }
 
         // If task is in history, resume it first
@@ -496,19 +502,55 @@ export async function registerRooRoutes(
           case "pressPrimaryButton":
             await controller.pressPrimaryButton(ExtensionType.ROO_CODE);
             logger.info(`Primary button pressed for task ${taskId}`);
-            return reply.status(200).send();
+            return reply.send({
+              id: taskId,
+              status: "completed",
+              message: "Primary button pressed successfully",
+            });
 
           case "pressSecondaryButton":
             await controller.pressSecondaryButton(ExtensionType.ROO_CODE);
             logger.info(`Secondary button pressed for task ${taskId}`);
-            return reply.status(200).send();
+            return reply.send({
+              id: taskId,
+              status: "completed",
+              message: "Secondary button pressed successfully",
+            });
+
+          case "cancel":
+            // Check if the taskId is in the current active tasks
+            if (activeTaskIds.includes(taskId)) {
+              await controller.rooCodeAdapter.cancelCurrentTask();
+              logger.info(`Task cancelled: ${taskId}`);
+              return reply.send({
+                message: "Task cancelled successfully",
+              });
+            } else {
+              return reply.status(400).send({
+                message: "Only current active tasks can be cancelled",
+              });
+            }
+
+          case "resume":
+            await controller.rooCodeAdapter.resumeTask(taskId);
+            logger.info(`Task resumed: ${taskId}`);
+            return reply.send({
+              id: taskId,
+              status: "running",
+              message: "Task resumed successfully",
+            });
 
           default:
-            return reply.status(400).send();
+            return reply.status(400).send({
+              message: `Unknown action: ${action}`,
+            });
         }
       } catch (error) {
         logger.error("Error handling task action:", error);
-        return reply.status(500).send();
+        return reply.status(500).send({
+          message:
+            error instanceof Error ? error.message : "Unknown error occurred",
+        });
       }
     },
   );
@@ -536,20 +578,19 @@ export async function registerRooRoutes(
           },
           500: {
             description: "Internal server error",
-            ...{ $ref: "ErrorResponse#" },
+            $ref: "ErrorResponse#",
           },
         },
       },
     },
     async (_request, reply) => {
       try {
-        return reply.status(200).send({
+        return reply.send({
           data: controller.rooCodeAdapter.getTaskHistory(),
         });
       } catch (error) {
         logger.error("Error retrieving task history:", error);
         return reply.status(500).send({
-          status: "failed",
           message:
             error instanceof Error ? error.message : "Unknown error occurred",
         });

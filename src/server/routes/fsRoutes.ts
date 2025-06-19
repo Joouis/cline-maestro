@@ -85,15 +85,15 @@ export async function registerFsRoutes(fastify: FastifyInstance) {
           },
           400: {
             description: "Bad request - invalid path or access denied",
-            ...{ $ref: "ErrorResponse#" },
+            $ref: "ErrorResponse#",
           },
           404: {
             description: "File not found",
-            ...{ $ref: "ErrorResponse#" },
+            $ref: "ErrorResponse#",
           },
           500: {
             description: "Internal server error",
-            ...{ $ref: "ErrorResponse#" },
+            $ref: "ErrorResponse#",
           },
         },
       },
@@ -104,7 +104,6 @@ export async function registerFsRoutes(fastify: FastifyInstance) {
 
         if (!requestedPath || requestedPath.trim() === "") {
           return reply.status(400).send({
-            status: "failed",
             message: "File path is required",
           });
         }
@@ -113,7 +112,6 @@ export async function registerFsRoutes(fastify: FastifyInstance) {
         const validation = validateWorkspacePath(requestedPath);
         if (!validation.isValid) {
           return reply.status(400).send({
-            status: "failed",
             message: validation.error,
           });
         }
@@ -126,7 +124,6 @@ export async function registerFsRoutes(fastify: FastifyInstance) {
 
           if (!stats.isFile()) {
             return reply.status(400).send({
-              status: "failed",
               message: "Path does not point to a file",
             });
           }
@@ -173,12 +170,10 @@ export async function registerFsRoutes(fastify: FastifyInstance) {
         } catch (fileError: any) {
           if (fileError.code === "ENOENT") {
             return reply.status(404).send({
-              status: "failed",
               message: "File not found",
             });
           } else if (fileError.code === "EACCES") {
             return reply.status(400).send({
-              status: "failed",
               message: "Access denied: Insufficient permissions to read file",
             });
           } else {
@@ -188,7 +183,6 @@ export async function registerFsRoutes(fastify: FastifyInstance) {
       } catch (error) {
         logger.error("Error reading file:", error);
         return reply.status(500).send({
-          status: "failed",
           message:
             error instanceof Error ? error.message : "Unknown error occurred",
         });

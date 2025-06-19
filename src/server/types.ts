@@ -1,5 +1,4 @@
 import { RooCodeSettings } from "@roo-code/types";
-import { TaskHistoryItem } from "../types/roo";
 
 export interface MessageRequest {
   text: string;
@@ -9,7 +8,7 @@ export interface MessageRequest {
 }
 
 export interface ActionRequest {
-  action: "pressPrimaryButton" | "pressSecondaryButton";
+  action: "pressPrimaryButton" | "pressSecondaryButton" | "cancel" | "resume";
 }
 
 export interface FileReadRequest {
@@ -22,8 +21,4 @@ export interface FileReadResponse {
   encoding: string;
   size: number;
   mimeType: string;
-}
-
-export interface TaskHistoryResponse {
-  data: TaskHistoryItem[];
 }

@@ -111,7 +111,6 @@ export class ProxyServer {
       $id: "ErrorResponse",
       type: "object",
       properties: {
-        status: { type: "string" },
         message: { type: "string" },
       },
     });

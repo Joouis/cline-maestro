@@ -24,11 +24,11 @@ export async function registerClineRoutes(
           },
           400: {
             description: "Bad request - invalid input",
-            ...{ $ref: "ErrorResponse#" },
+            $ref: "ErrorResponse#",
           },
           500: {
             description: "Internal server error",
-            ...{ $ref: "ErrorResponse#" },
+            $ref: "ErrorResponse#",
           },
         },
       },
@@ -39,14 +39,12 @@ export async function registerClineRoutes(
 
         if (!text || text.trim() === "") {
           return reply.status(400).send({
-            status: "failed",
             message: "Task description is required",
           });
         }
 
         if (!controller.isExtensionAvailable(ExtensionType.CLINE)) {
           return reply.status(500).send({
-            status: "failed",
             message: "Cline extension is not available",
           });
         }
@@ -54,7 +52,7 @@ export async function registerClineRoutes(
         await controller.startNewTask({ text, images }, ExtensionType.CLINE);
 
         const response = {
-          id: uuidv4(), // Generate a UUID since Cline doesn't return task ID
+          id: "Cline does not support returning task ID",
           status: "completed",
           message: "Currently Cline does not support returning message",
         };
@@ -64,7 +62,6 @@ export async function registerClineRoutes(
       } catch (error) {
         logger.error("Error creating Cline task:", error);
         return reply.status(500).send({
-          status: "failed",
           message:
             error instanceof Error ? error.message : "Unknown error occurred",
         });
