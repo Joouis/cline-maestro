@@ -41,7 +41,7 @@ jobs:
         id: previous-tag
         run: |
           # Get all tags sorted by version, excluding the current tag
-          previous_tag=$(git tag --sort=-version:refname | grep -v "^${{ github.ref_name }}$" | head -1)
+          previous_tag=$(git tag --sort=-version:refname | grep -v "^${{ github.ref_name }}" | head -1)
           if [ -n "$previous_tag" ]; then
             echo "tag=$previous_tag" >> $GITHUB_OUTPUT
             echo "found=true" >> $GITHUB_OUTPUT
