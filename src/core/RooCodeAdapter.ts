@@ -5,9 +5,10 @@ import {
   ProviderSettings,
   ProviderSettingsEntry,
   RooCodeEventName,
+  HistoryItem,
 } from "@roo-code/types";
+import { Anthropic } from "@anthropic-ai/sdk";
 import { ExtensionBaseAdapter } from "./ExtensionBaseAdapter";
-import { TaskHistoryItem } from "../types/roo";
 
 export interface TaskEventHandlers {
   onMessage?: (taskId: string, message: any) => void;
@@ -502,7 +503,7 @@ export class RooCodeAdapter extends ExtensionBaseAdapter<RooCodeAPI> {
   /**
    * Get task history
    */
-  getTaskHistory(): TaskHistoryItem[] {
+  getTaskHistory(): HistoryItem[] {
     if (!this.api) {
       throw new Error("RooCode API not available");
     }
@@ -512,6 +513,24 @@ export class RooCodeAdapter extends ExtensionBaseAdapter<RooCodeAPI> {
     const taskHistory = configuration.taskHistory || [];
     logger.info(`Retrieved ${taskHistory.length} task history items`);
     return taskHistory;
+  }
+
+  /**
+   * Get task details by task ID
+   */
+  async getTaskWithId(taskId: string): Promise<{
+    historyItem: HistoryItem;
+    taskDirPath: string;
+    apiConversationHistoryFilePath: string;
+    uiMessagesFilePath: string;
+    apiConversationHistory: Anthropic.MessageParam[];
+  }> {
+    if (!this.api) {
+      throw new Error("RooCode API not available");
+    }
+
+    logger.info(`Getting task with ID: ${taskId}`);
+    return await (this.api as any).sidebarProvider.getTaskWithId(taskId);
   }
 
   /**

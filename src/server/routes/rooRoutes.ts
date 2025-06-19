@@ -140,6 +140,36 @@ export async function registerRooRoutes(
   fastify: FastifyInstance,
   controller: ExtensionController,
 ) {
+  // Shared schema definition for HistoryItem
+  const HistoryItemSchema = {
+    $id: "HistoryItem#",
+    type: "object",
+    properties: {
+      id: { type: "string" },
+      number: { type: "number" },
+      ts: { type: "number" },
+      task: { type: "string" },
+      tokensIn: { type: "number" },
+      tokensOut: { type: "number" },
+      cacheWrites: { type: "number" },
+      cacheReads: { type: "number" },
+      totalCost: { type: "number" },
+      size: { type: "number" },
+      workspace: { type: "string" },
+    },
+    required: [
+      "id",
+      // "number", // Could be undefined in real cases
+      "ts",
+      "task",
+      "tokensIn",
+      "tokensOut",
+      "totalCost",
+    ],
+  };
+
+  // Add the shared schema to fastify
+  fastify.addSchema(HistoryItemSchema);
   // POST /api/v1/roo/task - Create new RooCode task with SSE stream
   fastify.post(
     "/roo/task",
@@ -501,31 +531,7 @@ export async function registerRooRoutes(
             properties: {
               data: {
                 type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    id: { type: "string" },
-                    number: { type: "number" },
-                    ts: { type: "number" },
-                    task: { type: "string" },
-                    tokensIn: { type: "number" },
-                    tokensOut: { type: "number" },
-                    cacheWrites: { type: "number" },
-                    cacheReads: { type: "number" },
-                    totalCost: { type: "number" },
-                    size: { type: "number" },
-                    workspace: { type: "string" },
-                  },
-                  required: [
-                    "id",
-                    // "number",
-                    "ts",
-                    "task",
-                    "tokensIn",
-                    "tokensOut",
-                    "totalCost",
-                  ],
-                },
+                items: { $ref: "HistoryItem#" },
               },
             },
             required: ["data"],
@@ -546,6 +552,131 @@ export async function registerRooRoutes(
         logger.error("Error retrieving task history:", error);
         return reply.status(500).send({
           status: "failed",
+          message:
+            error instanceof Error ? error.message : "Unknown error occurred",
+        });
+      }
+    },
+  );
+
+  // GET /api/v1/roo/task/:taskId - Get RooCode task by ID
+  fastify.get(
+    "/roo/task/:taskId",
+    {
+      schema: {
+        tags: ["Tasks"],
+        summary: "Get RooCode task by ID",
+        params: {
+          type: "object",
+          properties: {
+            taskId: { type: "string" },
+          },
+          required: ["taskId"],
+        },
+        response: {
+          200: {
+            type: "object",
+            description: "Task details with history and conversation data",
+            properties: {
+              historyItem: {
+                description: "Task history item data",
+                ...{ $ref: "HistoryItem#" },
+              },
+              taskDirPath: {
+                type: "string",
+                description: "Path to the task directory",
+              },
+              apiConversationHistoryFilePath: {
+                type: "string",
+                description: "Path to the API conversation history file",
+              },
+              uiMessagesFilePath: {
+                type: "string",
+                description: "Path to the UI messages file",
+              },
+              apiConversationHistory: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    role: {
+                      type: "string",
+                      enum: ["user", "assistant"],
+                    },
+                    content: {
+                      oneOf: [
+                        { type: "string" },
+                        {
+                          type: "array",
+                          items: {
+                            type: "object",
+                            properties: {
+                              type: { type: "string" },
+                              text: { type: "string" },
+                              source: {
+                                type: "object",
+                                properties: {
+                                  type: { type: "string" },
+                                  media_type: { type: "string" },
+                                  data: { type: "string" },
+                                },
+                              },
+                            },
+                          },
+                        },
+                      ],
+                    },
+                  },
+                  required: ["role", "content"],
+                },
+                description: "Array of Anthropic MessageParam objects",
+              },
+            },
+            required: [
+              "historyItem",
+              "taskDirPath",
+              "apiConversationHistoryFilePath",
+              "uiMessagesFilePath",
+              "apiConversationHistory",
+            ],
+          },
+          400: { $ref: "ErrorResponse#" },
+          404: { $ref: "ErrorResponse#" },
+          503: { $ref: "ErrorResponse#" },
+          500: { $ref: "ErrorResponse#" },
+        },
+      },
+    },
+    async (request, reply) => {
+      // Extension availability check
+      if (!controller.isExtensionAvailable(ExtensionType.ROO_CODE)) {
+        return reply.code(503).send({
+          error: "RooCode extension not available",
+          message: "The RooCode extension is not currently available",
+        });
+      }
+
+      try {
+        const { taskId } = request.params as { taskId: string };
+
+        // Validate taskId
+        if (!taskId || typeof taskId !== "string") {
+          return reply.code(400).send({
+            error: "Invalid taskId",
+            message: "taskId must be a non-empty string",
+          });
+        }
+
+        const taskData = await controller.rooCodeAdapter.getTaskWithId(taskId);
+
+        return reply.code(200).send(taskData);
+      } catch (error) {
+        logger.error(
+          `Error getting task ${(request.params as any).taskId}:`,
+          error,
+        );
+        return reply.code(500).send({
+          error: "Internal server error",
           message:
             error instanceof Error ? error.message : "Unknown error occurred",
         });
