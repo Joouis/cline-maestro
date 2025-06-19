@@ -121,7 +121,7 @@
     "test": "vscode-test",
     "prepare": "husky",
     "changeset": "changeset",
-    "changeset:version": "changeset version",
+    "changeset:version": "pnpm changeset version && node .changeset/changelog-polish.js",
     "changeset:tag": "changeset tag"
   },
   "lint-staged": {
