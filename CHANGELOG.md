@@ -1,16 +1,16 @@
 # Changelog
 
-## [0.3.0] - 2025-06-17
+## v0.3.0 - 2025-06-17
 
 - Support fetch Roo task history
 - Support `newTab` argument for new Roo task creation
 
-## [0.2.5] - 2025-06-17
+## v0.2.5 - 2025-06-17
 
 - Fix logo missing issue and reduce package size by removing unnecessary files
 - Do not show output panel at extension activation
 
-## [0.2.4] - 2025-06-16
+## v0.2.4 - 2025-06-16
 
 ### Features
 
@@ -20,7 +20,7 @@
 - Added Server-Sent Events (SSE) documentation for Roo API
 - Proxy server skips start if another one is already running, otherwise find an available port if default one has been used
 
-## [0.1.0] - 2025-06-14
+## v0.1.0 - 2025-06-14
 
 ### Features
 
