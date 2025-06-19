@@ -9,4 +9,13 @@ text = text.replace(
   (_, ver) => `## v${ver} - ${today}`,
 );
 
+// 2. Remove section headings like "### Minor Changes" and "### Patch Changes"
+text = text.replace(
+  /^###\s+(Minor Changes|Patch Changes|Major Changes)\s*\n\n/gm,
+  "",
+);
+
+// 3. Remove blank lines between bullet points to prevent spacing between sections
+text = text.replace(/^- .+\n\n- /gm, (match) => match.replace("\n\n", "\n"));
+
 fs.writeFileSync(path, text, "utf8");
