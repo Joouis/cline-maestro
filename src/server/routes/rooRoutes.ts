@@ -708,7 +708,7 @@ export async function registerRooRoutes(
 
         const taskData = await controller.rooCodeAdapter.getTaskWithId(taskId);
 
-        return reply.code(200).send(taskData);
+        return reply.send(taskData);
       } catch (error) {
         logger.error(
           `Error getting task ${(request.params as any).taskId}:`,
