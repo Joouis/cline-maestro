@@ -140,9 +140,9 @@ export async function registerRooRoutes(
   fastify: FastifyInstance,
   controller: ExtensionController,
 ) {
-  // Shared schema definition for HistoryItem
-  const HistoryItemSchema = {
-    $id: "HistoryItem#",
+  // Add the shared schema to fastify
+  fastify.addSchema({
+    $id: "HistoryItem",
     type: "object",
     properties: {
       id: { type: "string" },
@@ -166,10 +166,8 @@ export async function registerRooRoutes(
       "tokensOut",
       "totalCost",
     ],
-  };
+  });
 
-  // Add the shared schema to fastify
-  fastify.addSchema(HistoryItemSchema);
   // POST /api/v1/roo/task - Create new RooCode task with SSE stream
   fastify.post(
     "/roo/task",
