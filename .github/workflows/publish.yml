@@ -36,6 +36,19 @@ jobs:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
         run: pnpm run vscode:publish
 
+      - name: Find previous tag
+        if: startsWith(github.ref, 'refs/tags/')
+        id: previous-tag
+        run: |
+          # Get all tags sorted by version, excluding the current tag
+          previous_tag=$(git tag --sort=-version:refname | grep -v "^${{ github.ref_name }}$" | head -1)
+          if [ -n "$previous_tag" ]; then
+            echo "tag=$previous_tag" >> $GITHUB_OUTPUT
+            echo "found=true" >> $GITHUB_OUTPUT
+          else
+            echo "found=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
         env:
@@ -44,9 +57,18 @@ jobs:
           # Find the generated VSIX file
           vsix_file=$(find . -name "*.vsix" -type f | head -1)
 
-          # Create release
-          gh release create ${{ github.ref_name }} \
-            --title "Release ${{ github.ref_name }}" \
-            --notes "Release ${{ github.ref_name }}" \
-            --generate-notes \
-            "$vsix_file"
+          # Create release with changelog between tags
+          if [ "${{ steps.previous-tag.outputs.found }}" = "true" ]; then
+            # Generate notes from previous tag to current tag
+            gh release create ${{ github.ref_name }} \
+              --title "Release ${{ github.ref_name }}" \
+              --generate-notes \
+              --notes-start-tag "${{ steps.previous-tag.outputs.tag }}" \
+              "$vsix_file"
+          else
+            # First release - generate notes for all commits
+            gh release create ${{ github.ref_name }} \
+              --title "Release ${{ github.ref_name }}" \
+              --generate-notes \
+              "$vsix_file"
+          fi
