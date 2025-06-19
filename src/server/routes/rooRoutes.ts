@@ -578,7 +578,7 @@ export async function registerRooRoutes(
             properties: {
               historyItem: {
                 description: "Task history item data",
-                ...{ $ref: "HistoryItem#" },
+                $ref: "HistoryItem#",
               },
               taskDirPath: {
                 type: "string",
