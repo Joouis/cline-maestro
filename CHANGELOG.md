@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.4.0 - 2025.06.19
+
+- Support cancel current Roo task and resume Roo task by ID
+- Support get Roo task with id
+- Fix 'message "number" is required' issue when requesting /roo/tasks
+
 ## v0.3.0 - 2025-06-17
 
 - Support fetch Roo task history
