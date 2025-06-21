@@ -29,7 +29,7 @@ const esbuildProblemMatcherPlugin = {
 
 async function main() {
   const ctx = await esbuild.context({
-    entryPoints: ["src/extension.ts"],
+    entryPoints: ["src/extension.mts"],
     bundle: true,
     format: "cjs",
     minify: production,
@@ -38,7 +38,7 @@ async function main() {
     platform: "node",
     outfile: "dist/extension.js",
     metafile: !production,
-    external: ["vscode"],
+    external: ["vscode", "@valibot/to-json-schema", "effect", "sury"],
     logLevel: "debug",
     plugins: [
       /* add to the end of plugins array */
