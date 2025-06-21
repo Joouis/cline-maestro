@@ -5,7 +5,7 @@ import { analyzePortUsage, findAvailablePort } from "../utils/portUtils.js";
 import { ExtensionController } from "../core/controller.js";
 import { McpTaskManager } from "../core/McpTaskManager.js";
 
-// Input schema for the executeRooTasks tool
+// Input schema for the Execute_Roo_Tasks tool
 const ExecuteRooTasksSchema = z.object({
   tasks: z
     .array(z.string())
@@ -97,9 +97,8 @@ export class McpServer {
       // Initialize task manager
       await this.taskManager.initialize();
 
-      // Add the executeRooTasks tool with streaming support
       this.server.addTool({
-        name: "executeRooTasks",
+        name: "Execute_Roo_Tasks",
         description:
           "Execute multiple RooCode tasks in parallel. Returns real-time progress and results for each task.",
         parameters: ExecuteRooTasksSchema,
@@ -110,7 +109,7 @@ export class McpServer {
         execute: async (args: any, { streamContent }: any) => {
           const { tasks, maxConcurrency = 3 } = args;
           logger.info(
-            `MCP Tool executeRooTasks called with ${tasks.length} tasks, maxConcurrency: ${maxConcurrency}`,
+            `MCP Tool Execute_Roo_Tasks called with ${tasks.length} tasks, maxConcurrency: ${maxConcurrency}`,
           );
 
           try {
@@ -125,12 +124,12 @@ export class McpServer {
               },
             });
 
-            logger.info(`MCP Tool executeRooTasks completed.`);
+            logger.info(`MCP Tool Execute_Roo_Tasks completed.`);
 
             // Return final result as JSON string
             return;
           } catch (error) {
-            logger.error("Error in executeRooTasks tool:", error);
+            logger.error("Error in Execute_Roo_Tasks tool:", error);
             throw error;
           }
         },

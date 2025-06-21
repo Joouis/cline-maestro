@@ -202,19 +202,7 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(...disposables);
 
   await vscode.commands.executeCommand("agent-maestro.startServer");
-
-  // Start MCP server
-  try {
-    const mcpResult = await mcpServer.start();
-    if (mcpResult.started) {
-      logger.info(`MCP Server started successfully on port ${mcpResult.port}`);
-    } else {
-      logger.info(`MCP Server startup: ${mcpResult.reason}`);
-    }
-  } catch (error) {
-    logger.error("Failed to start MCP server:", error);
-    // Don't fail extension activation if MCP server fails
-  }
+  await vscode.commands.executeCommand("agent-maestro.startMcpServer");
 
   return controller;
 }
